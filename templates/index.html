@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Phân loại rác thông minh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body data-user-id="{{ default_user_id }}">
+<header class="site-header">
+    <div><span class="eyebrow">IT CHALLENGE</span>
+        <h1>Phân loại rác thông minh</h1></div>
+    <div class="status"><i id="statusDot"></i><span id="systemStatus">Đang khởi động</span></div>
+</header>
+<main>
+    <section class="detect-grid">
+        <article class="camera-card panel">
+            <div class="camera-frame">
+                <video id="camera" autoplay playsinline muted></video>
+                <canvas id="captureCanvas" hidden></canvas>
+                <div class="scan-box"><span></span><span></span><span></span><span></span></div>
+                <div id="cameraMessage" class="camera-message">Nhấn “Bật camera” để bắt đầu</div>
+            </div>
+            <div class="actions">
+                <button id="toggleCamera" class="primary">Bật camera</button>
+                <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> Hướng dẫn bằng giọng
+                    nói</label></div>
+        </article>
+        <aside class="result-column">
+            <article class="panel result-card"><span class="eyebrow">KẾT QUẢ NHẬN DIỆN</span>
+                <h2 id="resultName">Chưa có kết quả</h2>
+                <div class="confidence"><span>Độ tin cậy</span><strong id="confidenceText">0%</strong></div>
+                <div class="meter"><i id="confidenceBar"></i></div>
+            </article>
+            <article class="panel bin-guide">
+                <div id="binSwatch" class="bin-icon">♻</div>
+                <div><span class="eyebrow">HƯỚNG DẪN</span>
+                    <h3 id="binText">Đưa vật vào khung để nhận gợi ý</h3></div>
+            </article>
+            <p id="notice" class="notice" aria-live="polite"></p></aside>
+    </section>
+    <section class="dashboard-grid">
+        <article class="panel history-panel">
+            <div class="section-title">
+                <div><span class="eyebrow">CÁ NHÂN</span>
+                    <h2>Lịch sử nhận diện</h2></div>
+                <button id="refreshHistory" class="secondary">Làm mới</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Loại rác</th>
+                        <th>Độ tin cậy</th>
+                        <th>Thời gian</th>
+                    </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                    <tr>
+                        <td colspan="3" class="empty">Chưa có dữ liệu</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+        <article class="panel chart-panel"><span class="eyebrow">THỐNG KÊ</span>
+            <h2>Loại rác thường gặp</h2>
+            <div class="chart-box">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </article>
+        <article class="panel chart-panel"><span class="eyebrow">7 NGÀY GẦN NHẤT</span>
+            <h2>Số lượt theo ngày</h2>
+            <div class="chart-box">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>
