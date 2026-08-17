@@ -14,7 +14,7 @@ from detector import GarbageDetector
 from database import get_db, init_app as init_database
 
 app = Flask(__name__)
-app.config.update(MODEL_PATH=os.getenv("MODEL_PATH", "vit_garbage_tiny.pth"), CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")), BACKEND_API_URL=os.getenv("BACKEND_API_URL", ""), DATABASE_PATH=os.getenv("DATABASE_PATH", os.path.join(app.instance_path, "garbage.db")))
+app.config.update(MODEL_PATH=os.getenv("MODEL_PATH", "vit_garbage_tiny (1).pth"), CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")), BACKEND_API_URL=os.getenv("BACKEND_API_URL", ""), DATABASE_PATH=os.getenv("DATABASE_PATH", os.path.join(app.instance_path, "garbage.db")))
 init_database(app)
 detector = None
 
@@ -196,7 +196,11 @@ def api_stats():
     by_day = [dict(row) for row in database.execute("""SELECT substr(thoi_gian, 1, 10) AS date,
         COUNT(*) AS count FROM recognition_history GROUP BY substr(thoi_gian, 1, 10)
         ORDER BY date DESC LIMIT 30""").fetchall()][::-1]
-    return jsonify(total_recognitions=total, active_users=active_users, by_category=by_category, by_day=by_day)
+    by_bin = [dict(row) for row in database.execute("""SELECT c.mau_thung AS bin_name,
+        COUNT(h.id) AS count FROM waste_categories c
+        LEFT JOIN recognition_history h ON h.category_id=c.id
+        GROUP BY c.mau_thung ORDER BY c.mau_thung""").fetchall()]
+    return jsonify(total_recognitions=total, active_users=active_users, by_category=by_category, by_day=by_day, by_bin=by_bin)
 
 
 if __name__ == "__main__":

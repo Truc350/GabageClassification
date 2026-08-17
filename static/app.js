@@ -14,18 +14,18 @@ const LABELS = {
     unknown: 'Không xác định'
 };
 const FALLBACK = {
-    battery: {color: '#e34f4f', bin: 'đỏ'},
-    biological: {color: '#28a66f', bin: 'xanh lá'},
-    'brown-glass': {color: '#8a6846', bin: 'nâu'},
-    cardboard: {color: '#e0a52f', bin: 'vàng'},
-    clothes: {color: '#6d79cc', bin: 'xanh dương'},
-    'green-glass': {color: '#28a66f', bin: 'xanh lá'},
-    metal: {color: '#e0a52f', bin: 'vàng'},
-    paper: {color: '#4591d1', bin: 'xanh dương'},
-    plastic: {color: '#e0a52f', bin: 'vàng'},
-    shoes: {color: '#6d79cc', bin: 'xanh dương'},
-    trash: {color: '#555f5a', bin: 'xám'},
-    'white-glass': {color: '#28a66f', bin: 'xanh lá'}
+    battery: {color: '#7c3aed', bin: 'xám'},
+    biological: {color: '#22c55e', bin: 'xanh lá'},
+    'brown-glass': {color: '#92400e', bin: 'xanh dương'},
+    cardboard: {color: '#d97706', bin: 'xanh dương'},
+    clothes: {color: '#ec4899', bin: 'xanh dương'},
+    'green-glass': {color: '#059669', bin: 'xanh dương'},
+    metal: {color: '#64748b', bin: 'xanh dương'},
+    paper: {color: '#3b82f6', bin: 'xanh dương'},
+    plastic: {color: '#f59e0b', bin: 'xanh dương'},
+    shoes: {color: '#8b5cf6', bin: 'xanh dương'},
+    trash: {color: '#374151', bin: 'xám'},
+    'white-glass': {color: '#06b6d4', bin: 'xanh dương'}
 };
 const state = {
     stream: null,
@@ -35,6 +35,8 @@ const state = {
     recent: [],
     lastSaved: {label: null, at: 0},
     history: [],
+    historyPage: 1,
+    historyPageSize: 10,
     charts: []
 }, $ = id => document.getElementById(id), userId = Number(document.body.dataset.userId || 1);
 let vietnameseVoice = null;
@@ -45,22 +47,28 @@ function loadVietnameseVoice() {
     vietnameseVoice = voices.find(v => v.lang.toLowerCase() === 'vi-vn') || voices.find(v => v.lang.toLowerCase().startsWith('vi')) || null
 }
 
+const guidanceText = label => label === 'battery'
+    ? 'Kết quả nhận diện là pin. Vui lòng đưa đến điểm thu gom pin hoặc chất thải nguy hại, không bỏ chung với rác sinh hoạt.'
+    : `Kết quả nhận diện là ${(LABELS[label] || label).toLocaleLowerCase('vi-VN')}. Vui lòng bỏ vào thùng màu ${state.categories[label]?.bin || 'phù hợp'}.`;
+
 async function speakGuidance(label) {
     if (!$('soundEnabled').checked) return;
-    const recordedAudio = new Audio(`/static/audio/${encodeURIComponent(label)}.mp3`);
-    try {
-        await recordedAudio.play();
-        return;
-    } catch (error) {
-        console.warn('Không phát được file tiếng Việt, thử giọng hệ thống.', error);
+    // Chỉ dùng các bản thu vẫn đúng với sơ đồ ba thùng mới.
+    const recordingsStillCurrent = new Set(['biological', 'clothes', 'paper', 'shoes', 'trash']);
+    if (recordingsStillCurrent.has(label)) {
+        const recordedAudio = new Audio(`/static/audio/${encodeURIComponent(label)}.mp3`);
+        try {
+            await recordedAudio.play();
+            return;
+        } catch (error) {
+            console.warn('Không phát được file tiếng Việt, thử giọng hệ thống.', error);
+        }
     }
     if (!('speechSynthesis' in window)) {
         notice('Thiết bị không hỗ trợ phát giọng nói tiếng Việt.');
         return;
     }
-    const wasteName = (LABELS[label] || label).toLocaleLowerCase('vi-VN'),
-        binColor = state.categories[label]?.bin || 'phù hợp',
-        utterance = new SpeechSynthesisUtterance(`Kết quả nhận diện là ${wasteName}. Vui lòng bỏ vào thùng màu ${binColor}.`);
+    const utterance = new SpeechSynthesisUtterance(guidanceText(label));
     loadVietnameseVoice();
     if (!vietnameseVoice) {
         notice('Thiết bị không có giọng đọc tiếng Việt.');
@@ -158,12 +166,12 @@ async function capture() {
 
 function show(r) {
     $('resultName').textContent = LABELS[r.label] || r.label;
-    $('confidenceText').textContent = pct(r.confidence);
-    $('confidenceBar').style.width = `${Math.min(r.confidence * 100, 100)}%`;
     if (r.accepted) {
         const g = state.categories[r.label] || {};
         $('binSwatch').style.background = g.color || '#e5f4ec';
-        $('binText').textContent = `Bỏ vào thùng màu ${g.bin || 'phù hợp'}`
+        $('binText').textContent = r.label === 'battery'
+            ? 'Đưa đến điểm thu gom pin/chất thải nguy hại'
+            : `Bỏ vào thùng màu ${g.bin || 'phù hợp'}`
     } else $('binText').textContent = 'Hãy đưa vật lại gần và giữ ổn định'
 }
 
@@ -215,8 +223,24 @@ async function loadHistory() {
 }
 
 function renderHistory() {
-    const rows = state.history.map(norm);
-    $('historyBody').innerHTML = rows.length ? rows.slice(0, 50).map(r => `<tr><td>${LABELS[r.label] || r.label}</td><td>${pct(r.confidence > 1 ? r.confidence / 100 : r.confidence)}</td><td>${r.time ? new Date(r.time).toLocaleString('vi-VN') : '—'}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">Chưa có dữ liệu</td></tr>'
+    const selectedDate = $('historyDate').value;
+    const rows = state.history.map(norm).filter(r => {
+        if (!selectedDate) return true;
+        if (!r.time) return false;
+        const date = new Date(r.time);
+        if (Number.isNaN(date.getTime())) return false;
+        const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return localDate === selectedDate
+    });
+    const totalPages = Math.max(1, Math.ceil(rows.length / state.historyPageSize));
+    state.historyPage = Math.min(Math.max(1, state.historyPage), totalPages);
+    const start = (state.historyPage - 1) * state.historyPageSize;
+    const pageRows = rows.slice(start, start + state.historyPageSize);
+    const emptyMessage = selectedDate ? 'Không có dữ liệu trong ngày đã chọn' : 'Chưa có dữ liệu';
+    $('historyBody').innerHTML = pageRows.length ? pageRows.map(r => `<tr><td>${LABELS[r.label] || r.label}</td><td>${pct(r.confidence > 1 ? r.confidence / 100 : r.confidence)}</td><td>${r.time ? new Date(r.time).toLocaleString('vi-VN') : '—'}</td></tr>`).join('') : `<tr><td colspan="3" class="empty">${emptyMessage}</td></tr>`;
+    $('historyPageInfo').textContent = `Trang ${state.historyPage} / ${totalPages} · ${rows.length} kết quả`;
+    $('historyPrev').disabled = state.historyPage === 1;
+    $('historyNext').disabled = state.historyPage === totalPages
 }
 
 function renderCharts() {
@@ -261,6 +285,23 @@ function renderCharts() {
 
 $('toggleCamera').addEventListener('click', toggleCamera);
 $('refreshHistory').addEventListener('click', loadHistory);
+$('historyDate').addEventListener('change', () => {
+    state.historyPage = 1;
+    renderHistory()
+});
+$('clearHistoryDate').addEventListener('click', () => {
+    $('historyDate').value = '';
+    state.historyPage = 1;
+    renderHistory()
+});
+$('historyPrev').addEventListener('click', () => {
+    state.historyPage--;
+    renderHistory()
+});
+$('historyNext').addEventListener('click', () => {
+    state.historyPage++;
+    renderHistory()
+});
 window.addEventListener('beforeunload', stopCamera);
 if ('speechSynthesis' in window) {
     loadVietnameseVoice();

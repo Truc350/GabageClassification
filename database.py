@@ -8,19 +8,21 @@ from werkzeug.security import generate_password_hash
 
 
 SEED_CATEGORIES = [
-    ("battery", "Pin", "Đỏ", "#e34f4f", "Pin và rác thải điện tử nhỏ"),
-    ("biological", "Rác hữu cơ", "Xanh lá", "#28a66f", "Thức ăn thừa và rác hữu cơ"),
-    ("brown-glass", "Thủy tinh nâu", "Nâu", "#8a6846", "Chai lọ thủy tinh màu nâu"),
-    ("cardboard", "Bìa carton", "Vàng", "#e0a52f", "Bìa và hộp carton"),
-    ("clothes", "Quần áo", "Xanh dương", "#6d79cc", "Quần áo và vải"),
-    ("green-glass", "Thủy tinh xanh", "Xanh lá", "#28a66f", "Chai lọ thủy tinh màu xanh"),
-    ("metal", "Kim loại", "Vàng", "#e0a52f", "Lon và vật dụng kim loại"),
-    ("paper", "Giấy", "Xanh dương", "#4591d1", "Giấy có thể tái chế"),
-    ("plastic", "Nhựa", "Vàng", "#e0a52f", "Chai lọ và đồ nhựa"),
-    ("shoes", "Giày dép", "Xanh dương", "#6d79cc", "Giày dép đã qua sử dụng"),
-    ("trash", "Rác khác", "Xám", "#555f5a", "Rác không thuộc nhóm tái chế"),
-    ("white-glass", "Thủy tinh trắng", "Xanh lá", "#28a66f", "Chai lọ thủy tinh trong suốt"),
+    ("battery", "Pin", "Xám", "#7c3aed", "Pin cần chuyển đến điểm thu gom chất thải nguy hại"),
+    ("biological", "Rác hữu cơ", "Xanh lá", "#22c55e", "Chất thải thực phẩm và rác hữu cơ"),
+    ("brown-glass", "Thủy tinh nâu", "Xanh dương", "#92400e", "Rác có khả năng tái sử dụng, tái chế"),
+    ("cardboard", "Bìa carton", "Xanh dương", "#d97706", "Rác có khả năng tái sử dụng, tái chế"),
+    ("clothes", "Quần áo", "Xanh dương", "#ec4899", "Rác có khả năng tái sử dụng, tái chế"),
+    ("green-glass", "Thủy tinh xanh", "Xanh dương", "#059669", "Rác có khả năng tái sử dụng, tái chế"),
+    ("metal", "Kim loại", "Xanh dương", "#64748b", "Rác có khả năng tái sử dụng, tái chế"),
+    ("paper", "Giấy", "Xanh dương", "#3b82f6", "Rác có khả năng tái sử dụng, tái chế"),
+    ("plastic", "Nhựa", "Xanh dương", "#f59e0b", "Rác có khả năng tái sử dụng, tái chế"),
+    ("shoes", "Giày dép", "Xanh dương", "#8b5cf6", "Rác có khả năng tái sử dụng, tái chế"),
+    ("trash", "Rác khác", "Xám", "#374151", "Rác sinh hoạt khác không thuộc hai nhóm còn lại"),
+    ("white-glass", "Thủy tinh trắng", "Xanh dương", "#06b6d4", "Rác có khả năng tái sử dụng, tái chế"),
 ]
+
+LEGACY_CATEGORY_COLORS = {"Xanh lá": "#28a66f", "Xanh dương": "#4591d1", "Xám": "#555f5a"}
 
 
 def get_db():
@@ -49,6 +51,12 @@ def init_db():
            VALUES (?, ?, ?, ?, ?)""",
         SEED_CATEGORIES,
     )
+    # Chỉ đổi màu dữ liệu cũ còn dùng màu thùng; màu người quản trị đã sửa được giữ nguyên.
+    for label, _name, bin_name, color, _description in SEED_CATEGORIES:
+        database.execute(
+            "UPDATE waste_categories SET color_hex=? WHERE category_label=? AND lower(color_hex)=?",
+            (color, label, LEGACY_CATEGORY_COLORS[bin_name]),
+        )
     database.execute(
         """INSERT OR IGNORE INTO users (id, username, password_hash, role)
            VALUES (1, 'demo', ?, 'user')""",

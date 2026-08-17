@@ -31,8 +31,6 @@
         <aside class="result-column">
             <article class="panel result-card"><span class="eyebrow">KẾT QUẢ NHẬN DIỆN</span>
                 <h2 id="resultName">Chưa có kết quả</h2>
-                <div class="confidence"><span>Độ tin cậy</span><strong id="confidenceText">0%</strong></div>
-                <div class="meter"><i id="confidenceBar"></i></div>
             </article>
             <article class="panel bin-guide">
                 <div id="binSwatch" class="bin-icon">♻</div>
@@ -47,6 +45,12 @@
                 <div><span class="eyebrow">CÁ NHÂN</span>
                     <h2>Lịch sử nhận diện</h2></div>
                 <button id="refreshHistory" class="secondary">Làm mới</button>
+            </div>
+            <div class="history-tools">
+                <label for="historyDate">Lọc theo ngày
+                    <input id="historyDate" type="date">
+                </label>
+                <button id="clearHistoryDate" class="secondary" type="button">Tất cả</button>
             </div>
             <div class="table-wrap">
                 <table>
@@ -63,6 +67,11 @@
                     </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="pagination" aria-label="Phân trang lịch sử">
+                <button id="historyPrev" class="secondary" type="button">Trước</button>
+                <span id="historyPageInfo">Trang 1 / 1</span>
+                <button id="historyNext" class="secondary" type="button">Sau</button>
             </div>
         </article>
         <article class="panel chart-panel"><span class="eyebrow">THỐNG KÊ</span>
