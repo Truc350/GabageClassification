@@ -19,7 +19,14 @@ class ApiTestCase(unittest.TestCase):
     def test_seeded_categories(self):
         response = self.client.get("/api/categories")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.get_json()), 12)
+        categories = response.get_json()
+        self.assertEqual(len(categories), 12)
+        by_label = {item["category_label"]: item for item in categories}
+        self.assertEqual({item["mau_thung"] for item in categories}, {"Xanh lá", "Xanh dương", "Xám"})
+        self.assertEqual(by_label["biological"]["mau_thung"], "Xanh lá")
+        self.assertEqual(by_label["plastic"]["mau_thung"], "Xanh dương")
+        self.assertEqual(by_label["battery"]["mau_thung"], "Xám")
+        self.assertEqual(len({item["color_hex"] for item in categories}), 12)
 
     def test_history_and_stats_flow(self):
         created = self.client.post("/api/history", json={
@@ -34,6 +41,7 @@ class ApiTestCase(unittest.TestCase):
         stats = self.client.get("/api/stats").get_json()
         self.assertGreaterEqual(stats["total_recognitions"], 1)
         self.assertEqual(stats["active_users"], 1)
+        self.assertEqual({item["bin_name"] for item in stats["by_bin"]}, {"Xanh lá", "Xanh dương", "Xám"})
 
     def test_category_crud(self):
         payload = {"category_label": "test-label", "ten_loai": "Thử nghiệm", "mau_thung": "Cam", "color_hex": "#ff8800", "mo_ta": "Danh mục test"}
