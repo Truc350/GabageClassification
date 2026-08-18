@@ -19,6 +19,7 @@
     <nav aria-label="Điều hướng chính">
         <a class="sidebar-link active" href="#recognition" data-section="recognition"><span>⌾</span><div><strong>Nhận diện rác thải</strong><small>Quét và phân loại</small></div></a>
         <a class="sidebar-link" href="#campus-map-section" data-section="campus-map-section"><span>⌖</span><div><strong>Maps của trường</strong><small>Điểm thu gom</small></div></a>
+        <a class="sidebar-link" href="#environmental-education" data-section="environmental-education"><span>♧</span><div><strong>Giáo dục môi trường</strong><small>Phân loại và xử lý rác</small></div></a>
         <a class="sidebar-link" href="#statistics" data-section="statistics"><span>▥</span><div><strong>Thống kê</strong><small>Lịch sử và biểu đồ</small></div></a>
     </nav>
     <a class="sidebar-admin" href="/admin">Quản trị hệ thống →</a>
@@ -66,18 +67,53 @@
         <div id="nearestResult" class="nearest-result" hidden></div>
         <p id="mapEmpty" class="map-empty">Chưa có vị trí thùng rác. Quản trị viên có thể bố trí thùng trên trang quản trị.</p>
     </section>
+    <section id="environmental-education" class="education-section app-section">
+        <article class="panel education-hero">
+            <div><span class="eyebrow">CÙNG HÀNH ĐỘNG</span><h2>Hiểu đúng để xử lý rác đúng cách</h2><p>Phân loại rác ngay từ nơi phát sinh giúp mỗi loại rác đi vào đúng luồng thu gom. Hãy làm sạch sơ bộ, để ráo và bỏ đúng thùng được hướng dẫn.</p></div>
+            <div class="education-symbol" aria-hidden="true">♻</div>
+        </article>
+        <div class="education-grid">
+            <article class="panel education-card bin-green"><span class="education-icon">●</span><h3>Thùng xanh lá</h3><p>Dành cho rác hữu cơ như thức ăn thừa và các vật liệu hữu cơ dễ phân hủy.</p><strong>Gợi ý: để ráo nước trước khi bỏ.</strong></article>
+            <article class="panel education-card bin-blue"><span class="education-icon">●</span><h3>Thùng xanh dương</h3><p>Dành cho giấy, nhựa, kim loại, bìa carton, thủy tinh, quần áo và giày dép có thể thu gom riêng.</p><strong>Gợi ý: làm sạch sơ bộ và ép gọn nếu phù hợp.</strong></article>
+            <article class="panel education-card bin-gray"><span class="education-icon">●</span><h3>Thùng xám</h3><p>Dành cho rác còn lại không thuộc nhóm hữu cơ hoặc nhóm có thể thu gom riêng.</p><strong>Không bỏ pin chung với rác sinh hoạt.</strong></article>
+        </div>
+        <div class="education-grid education-details">
+            <article class="panel education-card"><span class="eyebrow">4 BƯỚC ĐƠN GIẢN</span><h3>Trước khi bỏ rác</h3><ol><li>Xác định loại vật liệu.</li><li>Loại bỏ thức ăn hoặc chất lỏng còn sót.</li><li>Gấp hoặc ép gọn khi an toàn.</li><li>Chọn đúng thùng hoặc điểm thu gom.</li></ol></article>
+            <article class="panel education-card hazardous-card"><span class="eyebrow">CẦN LƯU Ý</span><h3>Pin và chất thải nguy hại</h3><p>Không bỏ pin vào ba nhóm rác sinh hoạt thông thường. Hãy giữ pin khô ráo, tránh làm móp hoặc thủng và mang đến điểm thu gom pin hoặc chất thải nguy hại.</p></article>
+            <article class="panel education-card"><span class="eyebrow">THÓI QUEN XANH</span><h3>Giảm rác từ đầu</h3><ul><li>Ưu tiên đồ dùng có thể sử dụng nhiều lần.</li><li>Chỉ lấy lượng thức ăn vừa đủ.</li><li>Sửa chữa hoặc chia sẻ đồ còn sử dụng được.</li><li>Dùng bản đồ để tìm điểm thu gom phù hợp.</li></ul></article>
+        </div>
+        <article class="panel education-quiz">
+            <div class="section-title"><div><span class="eyebrow">KIỂM TRA NHANH</span><h2>Bạn đã biết cách phân loại chưa?</h2></div><strong id="quizScore"></strong></div>
+            <form id="educationQuizForm">
+                <div id="quizQuestions" class="quiz-questions"></div>
+                <button class="primary" type="submit">Kiểm tra kết quả</button>
+            </form>
+        </article>
+        <article class="panel rewards-panel"><div class="section-title"><div><span class="eyebrow">ĐIỂM XANH</span><h2>Đổi điểm lấy quà</h2></div><strong id="greenPoints">0 điểm</strong></div><p>Mỗi ngày, lượt kiểm tra đầu tiên được cộng 10 điểm cho mỗi câu đúng. Phần quà do quản trị viên cấu hình.</p><div id="rewardList" class="reward-grid"></div><div id="redemptionList" class="redemption-list"></div></article>
+    </section>
     <section id="statistics" class="dashboard-grid app-section">
+        <article class="panel statistics-filter-panel">
+            <div><span class="eyebrow">BỘ LỌC CHUNG</span><h2>Khoảng thời gian thống kê</h2></div>
+            <div class="statistics-filter-controls">
+                <label for="chartPeriod">Hiển thị
+                    <select id="chartPeriod">
+                        <option value="7">7 ngày gần nhất</option>
+                        <option value="30">30 ngày gần nhất</option>
+                        <option value="custom">Khoảng ngày tùy chọn</option>
+                        <option value="all">Tất cả thời gian</option>
+                    </select>
+                </label>
+                <div id="customPeriodFields" class="custom-period-fields" hidden>
+                    <label for="statisticsFromDate">Từ ngày<input id="statisticsFromDate" type="date"></label>
+                    <label for="statisticsToDate">Đến ngày<input id="statisticsToDate" type="date"></label>
+                </div>
+            </div>
+        </article>
         <article class="panel history-panel">
             <div class="section-title">
                 <div><span class="eyebrow">CÁ NHÂN</span>
                     <h2>Lịch sử nhận diện</h2></div>
                 <button id="refreshHistory" class="secondary">Làm mới</button>
-            </div>
-            <div class="history-tools">
-                <label for="historyDate">Lọc theo ngày
-                    <input id="historyDate" type="date">
-                </label>
-                <button id="clearHistoryDate" class="secondary" type="button">Tất cả</button>
             </div>
             <div class="table-wrap">
                 <table>
@@ -107,7 +143,7 @@
                 <canvas id="categoryChart"></canvas>
             </div>
         </article>
-        <article class="panel chart-panel"><span class="eyebrow">7 NGÀY GẦN NHẤT</span>
+        <article class="panel chart-panel"><span id="dailyChartPeriod" class="eyebrow">7 NGÀY GẦN NHẤT</span>
             <h2>Số lượt theo ngày</h2>
             <div class="chart-box">
                 <canvas id="dailyChart"></canvas>
@@ -116,6 +152,7 @@
     </section>
 </main>
 </div>
-<dialog id="reportDialog"><form id="reportForm"><input id="reportLocationId" type="hidden"><h2>Báo sự cố thùng rác</h2><p id="reportLocationName"></p><label>Vấn đề<select id="reportType"><option>Đầy</option><option>Hư hỏng</option><option>Sai vị trí</option></select></label><label>Ghi chú<textarea id="reportNote" rows="3" placeholder="Mô tả thêm nếu cần"></textarea></label><div class="dialog-actions"><button id="cancelReport" class="secondary" type="button">Hủy</button><button class="primary">Gửi báo cáo</button></div></form></dialog>
+<dialog id="reportDialog"><form id="reportForm" enctype="multipart/form-data"><input id="reportLocationId" type="hidden"><h2>Báo sự cố thùng rác</h2><p id="reportLocationName"></p><div class="form-row"><label>Họ tên (không bắt buộc)<input id="reporterName" maxlength="80"></label><label>Liên hệ (không bắt buộc)<input id="reporterContact" maxlength="120"></label></div><label>Vấn đề<select id="reportType"><option>Đầy</option><option>Hư hỏng</option><option>Sai vị trí</option></select></label><label>Ảnh hiện trạng<input id="reportImage" type="file" accept="image/jpeg,image/png,image/webp"></label><label>Mô tả chi tiết<textarea id="reportNote" rows="3" placeholder="Mô tả tình trạng hư hỏng hoặc vị trí cần kiểm tra"></textarea></label><div class="dialog-actions"><button id="cancelReport" class="secondary" type="button">Hủy</button><button class="primary">Gửi báo cáo</button></div></form></dialog>
+<dialog id="stationDialog"><div class="station-dialog"><span class="eyebrow">ĐIỂM THU GOM</span><h2 id="stationLocationName">Thùng rác</h2><p id="stationRecognitionStatus"></p><div class="station-actions"><button id="confirmDisposal" class="primary" type="button">Xác nhận đã bỏ rác · +1 điểm</button><button id="stationReportDamage" class="secondary" type="button">Báo hư hỏng</button><button id="closeStationDialog" class="secondary" type="button">Đóng</button></div></div></dialog>
 </body>
 </html>

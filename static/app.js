@@ -43,6 +43,44 @@ let vietnameseVoice = null;
 const CAMPUS_CENTER = [10.87236, 106.78984];
 const BIN_COLORS = {'Xanh lá': '#22c55e', 'Xanh dương': '#3b82f6', 'Xám': '#64748b'};
 let campusMap = null, binMarkers = [], binLocations = [], selectedBinFilter = 'all', lastAcceptedLabel = null;
+let activeQuizAnswers = {};
+const QUIZ_BANK = [
+    {question: 'Thức ăn thừa nên bỏ vào đâu?', options: [['green', 'Thùng xanh lá'], ['blue', 'Thùng xanh dương'], ['gray', 'Thùng xám']], answer: 'green'},
+    {question: 'Pin đã qua sử dụng nên xử lý thế nào?', options: [['gray', 'Bỏ chung vào thùng xám'], ['hazard', 'Mang đến điểm thu gom pin hoặc chất thải nguy hại']], answer: 'hazard'},
+    {question: 'Chai nhựa nên chuẩn bị thế nào trước khi thu gom?', options: [['clean', 'Làm sạch sơ bộ và để ráo'], ['full', 'Giữ nguyên chất lỏng bên trong']], answer: 'clean'},
+    {question: 'Cách phù hợp để giảm rác từ đầu là gì?', options: [['reuse', 'Ưu tiên đồ dùng có thể sử dụng nhiều lần'], ['single', 'Dùng thêm đồ dùng một lần']], answer: 'reuse'},
+    {question: 'Giấy và bìa carton thuộc nhóm thùng nào trong hệ thống?', options: [['green', 'Xanh lá'], ['blue', 'Xanh dương'], ['gray', 'Xám']], answer: 'blue'},
+    {question: 'Rác hữu cơ quá ướt nên làm gì trước khi bỏ?', options: [['drain', 'Để ráo nước'], ['mix', 'Trộn với giấy sạch']], answer: 'drain'},
+    {question: 'Quần áo còn sử dụng được nên ưu tiên cách nào?', options: [['share', 'Chia sẻ hoặc tái sử dụng'], ['trash', 'Bỏ ngay vào rác còn lại']], answer: 'share'},
+    {question: 'Khi thấy thùng bị hư hỏng, bạn nên làm gì?', options: [['report', 'Quét QR và gửi báo cáo'], ['ignore', 'Bỏ qua sự cố']], answer: 'report'},
+    {question: 'Thủy tinh trong hệ thống được thu gom theo nhóm nào?', options: [['blue', 'Xanh dương'], ['green', 'Xanh lá'], ['gray', 'Xám']], answer: 'blue'},
+    {question: 'Có nên làm móp hoặc chọc thủng pin trước khi thu gom không?', options: [['no', 'Không'], ['yes', 'Có']], answer: 'no'},
+    {question: 'Kim loại được hướng dẫn đến thùng nào?', options: [['blue', 'Xanh dương'], ['green', 'Xanh lá'], ['gray', 'Xám']], answer: 'blue'},
+    {question: 'Nếu chưa chắc vị trí thùng phù hợp, nên làm gì?', options: [['map', 'Dùng bản đồ tìm điểm thu gom'], ['ground', 'Để rác cạnh đường']], answer: 'map'}
+];
+
+function shuffled(items) {
+    return [...items].sort(() => Math.random() - .5)
+}
+
+function renderQuiz() {
+    const questions = shuffled(QUIZ_BANK).slice(0, 4);
+    activeQuizAnswers = {};
+    $('quizQuestions').innerHTML = questions.map((item, index) => {
+        const name = `q${index + 1}`;
+        activeQuizAnswers[name] = item.answer;
+        return `<fieldset><legend>${index + 1}. ${escapeMapText(item.question)}</legend>${shuffled(item.options).map(([value, label], optionIndex) => `<label><input type="radio" name="${name}" value="${escapeMapText(value)}"${optionIndex === 0 ? ' required' : ''}> ${escapeMapText(label)}</label>`).join('')}</fieldset>`
+    }).join('')
+}
+
+async function loadRewards() {
+    try {
+        const data = await getJson(`/api/rewards?user_id=${userId}`);
+        $('greenPoints').textContent = `${data.balance} điểm`;
+        $('rewardList').innerHTML = data.rewards.length ? data.rewards.map(item => `<article class="reward-card"><div><h3>${escapeMapText(item.name)}</h3><p>${escapeMapText(item.description || 'Phần quà đổi bằng điểm xanh')}</p></div><strong>${item.points_cost} điểm</strong><small>${item.stock == null ? 'Không giới hạn' : `Còn ${item.stock}`}</small><button class="primary" data-redeem-reward="${item.id}"${data.balance < item.points_cost || item.stock === 0 ? ' disabled' : ''}>Đổi quà</button></article>`).join('') : '<p class="empty">Quản trị viên chưa cấu hình phần quà.</p>';
+        $('redemptionList').innerHTML = data.redemptions.length ? `<h3>Lượt đổi gần đây</h3>${data.redemptions.map(item => `<div><strong>${escapeMapText(item.name)}</strong><span>Mã ${escapeMapText(item.code)} · ${escapeMapText(item.status)}</span></div>`).join('')}` : ''
+    } catch (error) { notice(`Không tải được điểm thưởng: ${error.message}`) }
+}
 
 function loadVietnameseVoice() {
     if (!('speechSynthesis' in window)) return;
@@ -129,6 +167,15 @@ function popupContent(item) {
     return `<strong>${escapeMapText(item.ten_vi_tri)}</strong><br>${bins} · ${escapeMapText(item.trang_thai)}${item.mo_ta ? `<br>${escapeMapText(item.mo_ta)}` : ''}<br><small>Cập nhật: ${updated}</small><div class="popup-actions"><a href="${directions}" target="_blank" rel="noopener">Chỉ đường</a><button type="button" data-report-location="${item.id}">Báo sự cố</button></div>`
 }
 
+function openReportDialog(location, reportType = '') {
+    if (!location) return;
+    $('reportLocationId').value = location.id;
+    $('reportLocationName').textContent = location.ten_vi_tri;
+    $('reportType').value = reportType || 'Đầy';
+    $('reportDialog').showModal();
+    $('reportNote').focus()
+}
+
 function renderBinMarkers() {
     if (!campusMap) return;
     binMarkers.forEach(marker => marker.remove());
@@ -155,13 +202,16 @@ async function loadBinMap() {
     try {
         binLocations = await getJson('/api/bin-locations');
         renderBinMarkers();
-        const requestedId = Number(new URLSearchParams(location.search).get('bin'));
+        const query = new URLSearchParams(location.search);
+        const reportLocationId = Number(query.get('report'));
+        const requestedId = reportLocationId || Number(query.get('bin'));
         const requested = requestedId && binLocations.find(item => item.id === requestedId);
         if (requested) {
             activateSection('campus-map-section');
             campusMap.setView([requested.latitude, requested.longitude], 18);
             binMarkers.find(marker => marker.locationId === requestedId)?.openPopup();
-            $('campusMap').scrollIntoView({behavior: 'smooth', block: 'center'})
+            if (reportLocationId) openReportDialog(requested, 'Hư hỏng');
+            else $('campusMap').scrollIntoView({behavior: 'smooth', block: 'center'})
         }
     } catch (error) {
         $('mapEmpty').hidden = false;
@@ -332,40 +382,72 @@ async function loadHistory() {
 }
 
 function renderHistory() {
-    const selectedDate = $('historyDate').value;
-    const rows = state.history.map(norm).filter(r => {
-        if (!selectedDate) return true;
-        if (!r.time) return false;
-        const date = new Date(r.time);
-        if (Number.isNaN(date.getTime())) return false;
-        const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        return localDate === selectedDate
-    });
+    const rows = filterByStatisticsPeriod(state.history.map(norm));
     const totalPages = Math.max(1, Math.ceil(rows.length / state.historyPageSize));
     state.historyPage = Math.min(Math.max(1, state.historyPage), totalPages);
     const start = (state.historyPage - 1) * state.historyPageSize;
     const pageRows = rows.slice(start, start + state.historyPageSize);
-    const emptyMessage = selectedDate ? 'Không có dữ liệu trong ngày đã chọn' : 'Chưa có dữ liệu';
+    const emptyMessage = $('chartPeriod').value === 'all' ? 'Chưa có dữ liệu' : 'Không có dữ liệu trong khoảng thời gian đã chọn';
     $('historyBody').innerHTML = pageRows.length ? pageRows.map(r => `<tr><td>${LABELS[r.label] || r.label}</td><td>${pct(r.confidence > 1 ? r.confidence / 100 : r.confidence)}</td><td>${r.time ? new Date(r.time).toLocaleString('vi-VN') : '—'}</td></tr>`).join('') : `<tr><td colspan="3" class="empty">${emptyMessage}</td></tr>`;
     $('historyPageInfo').textContent = `Trang ${state.historyPage} / ${totalPages} · ${rows.length} kết quả`;
     $('historyPrev').disabled = state.historyPage === 1;
     $('historyNext').disabled = state.historyPage === totalPages
 }
 
+const localDateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+function statisticsRange() {
+    const period = $('chartPeriod').value;
+    if (period === 'all') return {period, start: null, end: null};
+    if (period === 'custom') {
+        const start = $('statisticsFromDate').value ? new Date(`${$('statisticsFromDate').value}T00:00:00`) : null;
+        const end = $('statisticsToDate').value ? new Date(`${$('statisticsToDate').value}T23:59:59.999`) : null;
+        return {period, start, end}
+    }
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setDate(start.getDate() - Number(period) + 1);
+    start.setHours(0, 0, 0, 0);
+    return {period, start, end}
+}
+
+function filterByStatisticsPeriod(rows) {
+    const {start, end} = statisticsRange();
+    return rows.filter(row => {
+        if (!start && !end) return true;
+        const time = row.time && new Date(row.time);
+        return time && !Number.isNaN(time.getTime()) && (!start || time >= start) && (!end || time <= end)
+    })
+}
+
+function dateSeries(start, end) {
+    if (!start || !end || start > end) return [];
+    const days = [], cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+    while (cursor <= end) {
+        days.push(localDateKey(cursor));
+        cursor.setDate(cursor.getDate() + 1)
+    }
+    return days
+}
+
 function renderCharts() {
     if (typeof Chart === 'undefined') return;
     state.charts.forEach(c => c.destroy());
-    const rows = state.history.map(norm), counts = {};
+    Chart.defaults.font.family = 'Arial';
+    const {period, start, end} = statisticsRange();
+    const rows = filterByStatisticsPeriod(state.history.map(norm)), counts = {};
     rows.forEach(r => counts[r.label] = (counts[r.label] || 0) + 1);
-    const days = [...Array(7)].map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - 6 + i);
-        return d.toISOString().slice(0, 10)
-    }), daily = Object.fromEntries(days.map(d => [d, 0]));
+    let days;
+    if (period !== 'all' && start && end) days = dateSeries(start, end);
+    else days = [...new Set(rows.map(row => row.time && new Date(row.time)).filter(date => date && !Number.isNaN(date.getTime())).map(localDateKey))].sort();
+    const daily = Object.fromEntries(days.map(d => [d, 0]));
     rows.forEach(r => {
-        const d = r.time && new Date(r.time).toISOString().slice(0, 10);
+        const d = r.time && localDateKey(new Date(r.time));
         if (d in daily) daily[d]++
     });
+    $('dailyChartPeriod').textContent = period === 'all' ? 'TẤT CẢ THỜI GIAN' : period === 'custom' ? 'KHOẢNG NGÀY ĐÃ CHỌN' : `${period} NGÀY GẦN NHẤT`;
     state.charts = [new Chart($('categoryChart'), {
         type: 'doughnut',
         data: {
@@ -394,15 +476,17 @@ function renderCharts() {
 
 $('toggleCamera').addEventListener('click', toggleCamera);
 $('refreshHistory').addEventListener('click', loadHistory);
-$('historyDate').addEventListener('change', () => {
+function applyStatisticsFilter() {
     state.historyPage = 1;
-    renderHistory()
+    renderHistory();
+    renderCharts()
+}
+$('chartPeriod').addEventListener('change', () => {
+    $('customPeriodFields').hidden = $('chartPeriod').value !== 'custom';
+    applyStatisticsFilter()
 });
-$('clearHistoryDate').addEventListener('click', () => {
-    $('historyDate').value = '';
-    state.historyPage = 1;
-    renderHistory()
-});
+$('statisticsFromDate').addEventListener('change', applyStatisticsFilter);
+$('statisticsToDate').addEventListener('change', applyStatisticsFilter);
 $('historyPrev').addEventListener('click', () => {
     state.historyPage--;
     renderHistory()
@@ -422,27 +506,71 @@ $('campusMap').addEventListener('click', event => {
     const button = event.target.closest('[data-report-location]');
     if (!button) return;
     const location = binLocations.find(item => item.id === Number(button.dataset.reportLocation));
-    if (!location) return;
-    $('reportLocationId').value = location.id;
-    $('reportLocationName').textContent = location.ten_vi_tri;
-    $('reportDialog').showModal()
+    openReportDialog(location)
 });
 $('cancelReport').addEventListener('click', () => $('reportDialog').close());
 $('reportForm').addEventListener('submit', async event => {
     event.preventDefault();
     try {
-        await getJson('/api/bin-reports', {method: 'POST', body: JSON.stringify({location_id: Number($('reportLocationId').value), report_type: $('reportType').value, note: $('reportNote').value.trim()})});
+        const data = new FormData();
+        data.append('location_id', $('reportLocationId').value);
+        data.append('report_type', $('reportType').value);
+        data.append('note', $('reportNote').value.trim());
+        data.append('reporter_name', $('reporterName').value.trim());
+        data.append('reporter_contact', $('reporterContact').value.trim());
+        if ($('reportImage').files[0]) data.append('image', $('reportImage').files[0]);
+        const response = await fetch('/api/bin-reports', {method: 'POST', body: data});
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
         $('reportDialog').close();
-        $('reportNote').value = '';
+        $('reportForm').reset();
         notice('Đã gửi báo cáo đến quản trị viên.')
     } catch (error) { notice(error.message) }
+});
+$('educationQuizForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const answers = new FormData(event.currentTarget);
+    const correct = activeQuizAnswers;
+    const score = Object.entries(correct).filter(([question, answer]) => answers.get(question) === answer).length;
+    event.currentTarget.querySelectorAll('label').forEach(label => label.classList.remove('answer-correct', 'answer-wrong'));
+    Object.entries(correct).forEach(([question, correctAnswer]) => {
+        const inputs = [...event.currentTarget.querySelectorAll(`input[name="${question}"]`)];
+        inputs.find(input => input.value === correctAnswer)?.closest('label')?.classList.add('answer-correct');
+        const selected = inputs.find(input => input.checked);
+        if (selected && selected.value !== correctAnswer) selected.closest('label').classList.add('answer-wrong')
+    });
+    const total = Object.keys(correct).length;
+    $('quizScore').textContent = score === total ? `${score}/${total} · Chuyên gia xanh` : `${score}/${total} câu đúng`;
+    $('quizScore').classList.toggle('perfect', score === total);
+    event.currentTarget.classList.add('quiz-graded');
+    try {
+        const result = await getJson('/api/education-quiz', {method: 'POST', body: JSON.stringify({user_id: userId, score, total})});
+        $('quizScore').textContent += result.points_awarded ? ` · +${result.points_awarded} điểm` : ' · Hôm nay đã nhận điểm';
+        loadRewards()
+    }
+    catch (error) { notice(`Đã chấm điểm nhưng chưa lưu được: ${error.message}`) }
+});
+$('rewardList').addEventListener('click', async event => {
+    const rewardId = event.target.dataset.redeemReward;
+    if (!rewardId || !confirm('Bạn muốn dùng điểm để đổi phần quà này?')) return;
+    try {
+        const result = await getJson(`/api/rewards/${rewardId}/redeem`, {method: 'POST', body: JSON.stringify({user_id: userId})});
+        notice(`Đổi quà thành công. Mã nhận quà: ${result.code}`); loadRewards()
+    } catch (error) { notice(error.message) }
+});
+$('educationQuizForm').addEventListener('change', event => {
+    if (!event.currentTarget.classList.contains('quiz-graded')) return;
+    event.currentTarget.classList.remove('quiz-graded');
+    event.currentTarget.querySelectorAll('label').forEach(label => label.classList.remove('answer-correct', 'answer-wrong'));
+    $('quizScore').textContent = '';
+    $('quizScore').classList.remove('perfect')
 });
 function closeSidebar() {
     document.body.classList.remove('sidebar-open');
     $('sidebarToggle').setAttribute('aria-expanded', 'false')
 }
 
-const VALID_SECTIONS = new Set(['recognition', 'campus-map-section', 'statistics']);
+const VALID_SECTIONS = new Set(['recognition', 'campus-map-section', 'environmental-education', 'statistics']);
 
 function activateSection(sectionId, updateHistory = true) {
     const targetId = VALID_SECTIONS.has(sectionId) ? sectionId : 'recognition';
@@ -480,4 +608,6 @@ if ('speechSynthesis' in window) {
 loadCategories();
 loadHistory();
 loadBinMap();
+renderQuiz();
+loadRewards();
 activateSection(location.hash.slice(1), false);

@@ -12,22 +12,36 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
     <script src="{{ url_for('static', filename='admin.js') }}" defer></script>
 </head>
-<body>
-<header class="site-header">
-    <div><span class="eyebrow">QUẢN TRỊ HỆ THỐNG</span>
-        <h1>Dashboard phân loại rác</h1></div>
-    <div class="header-actions"><a class="back-link" href="/">← Trang nhận diện</a>
-        <form method="post" action="/logout">
-            <button class="secondary">Đăng xuất</button>
-        </form>
-    </div>
-</header>
+<body class="user-app admin-app" data-role="{{ current_role }}">
+<button id="adminSidebarToggle" class="sidebar-toggle" type="button" aria-label="Mở menu quản trị" aria-expanded="false">☰</button>
+<div id="adminSidebarBackdrop" class="sidebar-backdrop"></div>
+<aside class="app-sidebar">
+    <a class="sidebar-brand admin-sidebar-brand" href="#admin-dashboard"><span>♻</span><div><strong>WasteWise</strong><small>Quản trị hệ thống</small></div></a>
+    <nav aria-label="Điều hướng quản trị">
+        <a class="sidebar-link active" href="#admin-dashboard" data-admin-section="admin-dashboard"><span>▥</span><div><strong>Tổng quan</strong><small>Chỉ số và biểu đồ</small></div></a>
+        <a class="sidebar-link" href="#admin-locations" data-admin-section="admin-locations"><span>⌖</span><div><strong>Điểm thu gom</strong><small>Bản đồ và mã QR</small></div></a>
+        <a class="sidebar-link" href="#admin-reports" data-admin-section="admin-reports"><span>!</span><div><strong>Báo cáo sự cố <b id="notificationBadge" class="notification-badge" hidden>0</b></strong><small>Phản ánh người dùng</small></div></a>
+        <a class="sidebar-link" href="#admin-categories" data-admin-section="admin-categories"><span>≡</span><div><strong>Danh mục rác</strong><small>Cấu hình phân loại</small></div></a>
+        <a class="sidebar-link" href="#admin-system" data-admin-section="admin-system"><span>⚙</span><div><strong>Tài khoản & nhật ký</strong><small>Phân quyền và thao tác</small></div></a>
+    </nav>
+    <div class="admin-sidebar-footer"><a href="/">← Trang người dùng</a><form method="post" action="/logout"><button type="submit">Đăng xuất</button></form></div>
+</aside>
+<div class="app-content">
 <main>
+    <section id="admin-dashboard" class="app-section active">
+    <header class="site-header admin-dashboard-header">
+        <div><span class="eyebrow">QUẢN TRỊ HỆ THỐNG</span><h1>Dashboard phân loại rác</h1></div>
+    </header>
+    <section class="panel admin-time-filter">
+        <div><span class="eyebrow">BỘ LỌC CHUNG</span><h2>Khoảng thời gian thống kê</h2></div>
+        <div class="admin-time-controls"><label>Hiển thị<select id="adminStatsPeriod"><option value="7">7 ngày gần nhất</option><option value="30">30 ngày gần nhất</option><option value="custom">Khoảng ngày tùy chọn</option><option value="all">Tất cả thời gian</option></select></label><div id="adminCustomPeriod" class="admin-custom-period" hidden><label>Từ ngày<input id="adminStatsFrom" type="date"></label><label>Đến ngày<input id="adminStatsTo" type="date"></label></div></div>
+    </section>
     <section class="stat-grid">
         <article class="panel stat"><span>Tổng lượt nhận diện</span><strong id="totalRecognitions">0</strong></article>
         <article class="panel stat"><span>Người dùng hoạt động</span><strong id="activeUsers">0</strong></article>
         <article class="panel stat"><span>Số danh mục</span><strong id="categoryCount">0</strong></article>
     </section>
+    <section class="panel advanced-summary"><div><span class="eyebrow">VẬN HÀNH</span><h2>Chỉ số nâng cao</h2></div><div><strong id="averageResolution">0 giờ</strong><span>Thời gian xử lý trung bình</span></div><div><strong id="topProblemLocation">Chưa có dữ liệu</strong><span>Điểm có nhiều sự cố nhất</span></div><a id="exportRecognitions" class="secondary export-link" href="/api/export/recognitions.csv">Xuất lịch sử CSV</a></section>
     <section class="bin-summary">
         <div class="section-title">
             <div><span class="eyebrow">THU GOM</span>
@@ -56,7 +70,12 @@
             </div>
         </article>
     </section>
-    <section class="panel location-manager">
+    <section class="bin-status-summary">
+        <div class="section-title"><div><span class="eyebrow">TRẠNG THÁI HIỆN TẠI</span><h2>Tình trạng các điểm thùng rác</h2></div><strong id="locationStatusTotal">0 điểm</strong></div>
+        <article class="panel chart-panel bin-status-chart-panel"><div class="bin-status-chart-box"><canvas id="binStatusChart"></canvas></div></article>
+    </section>
+    </section>
+    <section id="admin-locations" class="panel location-manager app-section">
         <div class="section-title">
             <div><span class="eyebrow">BẢN ĐỒ KHUÔN VIÊN</span>
                 <h2>Bố trí thùng rác</h2></div>
@@ -66,14 +85,14 @@
         <div id="adminCampusMap" class="campus-map"></div>
         <div id="locationList" class="location-list"></div>
     </section>
-    <section class="panel report-manager">
+    <section id="admin-reports" class="panel report-manager app-section">
         <div class="section-title">
             <div><span class="eyebrow">PHẢN ÁNH</span>
                 <h2>Báo cáo từ người dùng</h2></div>
-            <strong id="newReportCount">0 báo cáo mới</strong></div>
+            <div class="section-actions"><strong id="newReportCount">0 báo cáo mới</strong><a class="secondary export-link" href="/api/export/reports.csv">Xuất CSV</a></div></div>
         <div id="reportList" class="location-list"></div>
     </section>
-    <section class="panel category-manager">
+    <section id="admin-categories" class="panel category-manager app-section">
         <div class="section-title">
             <div><span class="eyebrow">CẤU HÌNH</span>
                 <h2>Quản lý danh mục rác</h2></div>
@@ -95,6 +114,11 @@
                 <tbody id="categoryBody"></tbody>
             </table>
         </div>
+    </section>
+    <section id="admin-system" class="app-section system-manager">
+        <section class="panel account-manager"><div class="section-title"><div><span class="eyebrow">PHÂN QUYỀN</span><h2>Tài khoản quản trị</h2></div>{% if current_role == 'admin' %}<button id="newUser" class="primary">Thêm tài khoản</button>{% endif %}</div><p>Admin có toàn quyền; nhân viên được xử lý vận hành; người xem chỉ được đọc dữ liệu.</p><div id="userList" class="location-list"></div></section>
+        <section class="panel reward-manager"><div class="section-title"><div><span class="eyebrow">ĐIỂM XANH</span><h2>Phần quà và lượt đổi</h2></div><button id="newReward" class="primary" type="button">Thêm phần quà</button></div><p>Chỉ những phần quà đang bật mới xuất hiện với người dùng.</p><div id="adminRewardList" class="location-list"></div><h3>Lượt đổi gần đây</h3><div id="adminRedemptionList" class="location-list"></div></section>
+        <section class="panel audit-manager"><div class="section-title"><div><span class="eyebrow">NHẬT KÝ</span><h2>Thao tác gần đây</h2></div><strong>{{ current_username }}</strong></div><div id="auditList" class="location-list"></div></section>
     </section>
     <dialog id="categoryDialog">
         <form id="categoryForm"><input id="categoryId" type="hidden">
@@ -127,6 +151,7 @@
             <div class="form-row"><label>Vĩ độ<input id="locationLat" type="number" step="any" required></label><label>Kinh
                 độ<input id="locationLng" type="number" step="any" required></label></div>
             <label>Mô tả<textarea id="locationDescription" rows="3" placeholder="Thông tin nhận biết vị trí"></textarea></label>
+            <div class="form-row"><label>Bảo trì gần nhất<input id="lastMaintenance" type="date"></label><label>Bảo trì tiếp theo<input id="nextMaintenance" type="date"></label></div>
             <p class="coordinate-help">Có thể nhập tọa độ hoặc bấm trực tiếp lên bản đồ.</p>
             <div class="dialog-actions">
                 <button type="button" id="cancelLocationDialog" class="secondary">Hủy</button>
@@ -134,10 +159,12 @@
             </div>
         </form>
     </dialog>
+    <dialog id="userDialog"><form id="userForm"><input id="userId" type="hidden"><h2 id="userDialogTitle">Thêm tài khoản</h2><label>Tên đăng nhập<input id="accountUsername" required></label><label>Mật khẩu<input id="accountPassword" type="password" minlength="6" placeholder="Để trống nếu không đổi"></label><label>Vai trò<select id="accountRole"><option value="admin">Quản trị viên</option><option value="staff">Nhân viên thu gom</option><option value="viewer">Chỉ xem thống kê</option></select></label><div class="dialog-actions"><button id="cancelUser" class="secondary" type="button">Hủy</button><button class="primary">Lưu</button></div></form></dialog>
+    <dialog id="rewardDialog"><form id="rewardForm"><input id="rewardId" type="hidden"><h2 id="rewardDialogTitle">Thêm phần quà</h2><label>Tên phần quà<input id="rewardName" required></label><label>Mô tả<textarea id="rewardDescription" rows="3"></textarea></label><div class="form-row"><label>Điểm cần đổi<input id="rewardCost" type="number" min="1" required></label><label>Tồn kho<input id="rewardStock" type="number" min="0" placeholder="Để trống nếu không giới hạn"></label></div><label class="reward-active-label"><input id="rewardActive" type="checkbox" checked> Hiển thị với người dùng</label><p id="rewardNotice" class="notice" aria-live="polite"></p><div class="dialog-actions"><button id="cancelReward" class="secondary" type="button">Hủy</button><button id="saveReward" class="primary" type="submit">Lưu phần quà</button></div></form></dialog>
     <dialog id="qrDialog">
         <div class="qr-dialog"><h2 id="qrTitle">Mã QR điểm thu gom</h2>
             <div id="qrCode"></div>
-            <p>In mã này và dán lên thùng để người dùng mở đúng vị trí.</p>
+            <p>In mã này và dán lên thùng để người dùng xác nhận bỏ rác hoặc báo hư hỏng.</p>
             <div class="dialog-actions">
                 <button id="printQr" class="primary" type="button">In QR</button>
                 <button id="closeQr" class="secondary" type="button">Đóng</button>
@@ -145,5 +172,6 @@
         </div>
     </dialog>
 </main>
+</div>
 </body>
 </html>

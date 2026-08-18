@@ -4,6 +4,30 @@
 .header-actions { display: flex; align-items: center; gap: 12px; }
 .header-actions form { margin: 0; }
 
+.admin-sidebar-footer { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid rgba(255,255,255,.13); }
+.admin-sidebar-footer a, .admin-sidebar-footer button { color: #b9d4ca; font: 700 13px Arial, sans-serif; text-decoration: none; }
+.admin-sidebar-footer form { margin-top: 8px; }
+.admin-sidebar-footer button { width: 100%; padding: 8px 0; background: transparent; text-align: left; }
+.admin-sidebar-footer a:hover, .admin-sidebar-footer button:hover { color: #fff; }
+.admin-app .location-manager, .admin-app .report-manager, .admin-app .category-manager { margin-top: 22px; }
+.admin-dashboard-header { width: 100%; }
+.admin-time-filter { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 22px; margin-bottom: 20px; }
+.admin-time-filter h2 { margin: 2px 0 0; font-size: 20px; }
+.admin-time-controls, .admin-custom-period { display: flex; align-items: center; gap: 12px; }
+.admin-time-filter label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.admin-time-filter select, .admin-time-filter input { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; }
+.bin-status-summary { margin: 32px 0 40px; }
+.bin-status-summary h2 { margin: 3px 0 16px; }
+.bin-status-chart-panel { padding: 24px; }
+.bin-status-chart-box { position: relative; height: 340px; }
+.notification-badge { display: inline-grid; min-width: 20px; height: 20px; place-items: center; margin-left: 4px; border-radius: 999px; background: #e05646; color: #fff; font-size: 11px; }
+.advanced-summary { display: grid; grid-template-columns: 1.2fr 1fr 1.4fr auto; align-items: center; gap: 22px; padding: 20px 22px; margin: 20px 0; }
+.advanced-summary h2 { margin: 2px 0 0; font-size: 20px; }
+.advanced-summary div > strong, .advanced-summary div > span { display: block; }
+.advanced-summary div > span { color: var(--muted); font-size: 12px; }
+.export-link { display: inline-flex; align-items: center; justify-content: center; padding: 9px 14px; border-radius: 8px; font-weight: 700; text-decoration: none; }
+.section-actions { display: flex; align-items: center; gap: 12px; }
+
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .stat { padding: 22px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
 .stat:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(18, 63, 47, .06); }
@@ -43,6 +67,27 @@
 .report-done { opacity: .68; }
 .report-new > i { background: #e0a528; }
 .report-done > i { background: #64748b; }
+.report-card { padding: 18px; border: 1px solid var(--line); border-radius: 13px; }
+.report-card.report-new { border-left: 4px solid #e0a528; }
+.report-card.report-done { border-left: 4px solid #22c55e; }
+.report-card-head { display: flex; justify-content: space-between; gap: 12px; }
+.report-card-head strong, .report-card-head span { display: block; }
+.report-card-head span, .report-card small { color: var(--muted); font-size: 13px; }
+.report-card-head a { color: var(--green); font-weight: 700; }
+.report-workflow { display: grid; grid-template-columns: 180px 1fr auto; align-items: end; gap: 12px; margin: 12px 0; }
+.report-workflow label { color: var(--muted); font-size: 12px; font-weight: 700; }
+.report-workflow select, .report-workflow input { width: 100%; margin-top: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.system-manager { margin: 22px 0 40px; }
+.account-manager, .audit-manager, .reward-manager { padding: 28px; margin-bottom: 20px; }
+.account-manager h2, .audit-manager h2, .reward-manager h2 { margin: 3px 0; }
+.account-manager > p, .reward-manager > p { color: var(--muted); }
+.reward-manager .location-item select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.reward-active-label { display: flex; align-items: center; gap: 8px; }
+.reward-active-label input { width: auto; margin: 0; }
+.admin-app[data-role="viewer"] #newLocation, .admin-app[data-role="viewer"] #newCategory,
+.admin-app[data-role="viewer"] #newReward, .admin-app[data-role="viewer"] .row-actions,
+.admin-app[data-role="viewer"] .report-workflow, .admin-app[data-role="viewer"] [data-reward-edit],
+.admin-app[data-role="viewer"] [data-redemption-status] { display: none; }
 
 fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin: 12px 0; }
 fieldset legend { font-weight: 600; color: var(--ink); padding: 0 4px; font-size: 14px; }
@@ -75,4 +120,9 @@ dialog input:focus, dialog textarea:focus, dialog select:focus { outline: none; 
     .location-item { grid-template-columns: auto 1fr; }
     .location-item .row-actions { grid-column: 1 / -1; margin-top: 8px; }
     .site-header, .header-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
+    .admin-time-filter, .admin-time-controls, .admin-custom-period { align-items: stretch; flex-direction: column; }
+    .admin-time-filter label { align-items: stretch; flex-direction: column; }
+    .bin-status-chart-box { height: 300px; }
+    .advanced-summary, .report-workflow { grid-template-columns: 1fr; }
+    .report-card-head, .section-actions { align-items: flex-start; flex-direction: column; }
 }
