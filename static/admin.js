@@ -167,14 +167,14 @@ const formatTime = value => value ? new Date(`${value.replace(' ', 'T')}Z`).toLo
 function renderReports() {
     const fresh = reports.filter(item => item.status === 'Mới').length;
     $('newReportCount').textContent = `${fresh} báo cáo mới`;
-    $('reportList').innerHTML = reports.length ? reports.map(item => `<article class="report-card report-${item.status === 'Đã xử lý' ? 'done' : 'new'}" data-report-id="${item.id}"><div class="report-card-head"><div><strong>${escapeHtml(item.report_type)} · ${escapeHtml(item.ten_vi_tri)}</strong><span>${escapeHtml(item.reporter_name || 'Ẩn danh')}${item.reporter_contact ? ` · ${escapeHtml(item.reporter_contact)}` : ''} · ${formatTime(item.created_at)}</span></div>${item.image_path ? `<a href="/api/bin-reports/${item.id}/image" target="_blank">Xem ảnh</a>` : ''}</div><p>${escapeHtml(item.note || 'Không có mô tả')}</p><div class="report-workflow"><label>Trạng thái<select data-report-status><option${item.status === 'Mới' ? ' selected' : ''}>Mới</option><option${item.status === 'Đang xử lý' ? ' selected' : ''}>Đang xử lý</option><option${item.status === 'Đã xử lý' ? ' selected' : ''}>Đã xử lý</option></select></label><label>Ghi chú xử lý<input data-report-note value="${escapeHtml(item.admin_note || '')}" placeholder="Nội dung đã xử lý"></label><button class="primary" data-save-report="${item.id}">Lưu</button></div><small>Phụ trách: ${escapeHtml(item.assigned_username || 'Chưa phân công')}</small></article>`).join('') : '<p class="empty">Chưa có báo cáo từ người dùng.</p>'
+    $('reportList').innerHTML = reports.length ? reports.map(item => `<article class="report-card report-${item.status === 'Đã xử lý' ? 'done' : 'new'}" data-report-id="${item.id}"><div class="report-card-head"><div><strong>${escapeHtml(item.report_type)} · ${escapeHtml(item.ten_vi_tri)}</strong><span>${escapeHtml(item.reporter_name || 'Ẩn danh')}${item.reporter_contact ? ` · ${escapeHtml(item.reporter_contact)}` : ''} · ${formatTime(item.created_at)}</span></div>${item.image_path ? `<a href="/api/bin-reports/${item.id}/image" target="_blank">Xem ảnh</a>` : ''}</div><p>${escapeHtml(item.note || 'Không có mô tả')}</p><div class="report-workflow"><label>Trạng thái<select data-report-status><option${item.status === 'Mới' ? ' selected' : ''}>Mới</option><option${item.status === 'Đang xử lý' ? ' selected' : ''}>Đang xử lý</option><option${item.status === 'Đã xử lý' ? ' selected' : ''}>Đã xử lý</option></select></label><label>Ghi chú xử lý<input data-report-note value="${escapeHtml(item.admin_note || '')}" placeholder="Nội dung đã xử lý"></label><label class="award-report-points"><input type="checkbox" data-award-report> Báo cáo hợp lệ · +3 điểm</label><button class="primary" data-save-report="${item.id}">Lưu</button></div><small>Phụ trách: ${escapeHtml(item.assigned_username || 'Chưa phân công')}</small></article>`).join('') : '<p class="empty">Chưa có báo cáo từ người dùng.</p>'
 }
 
 function showQr(item) {
     activeQrLocation = item;
     $('qrTitle').textContent = `Mã QR · ${item.ten_vi_tri}`;
     $('qrCode').innerHTML = '';
-    new QRCode($('qrCode'), {text: `${location.origin}/?report=${item.id}`, width: 220, height: 220});
+    new QRCode($('qrCode'), {text: `${location.origin}/?station=${item.id}`, width: 220, height: 220});
     $('qrDialog').showModal()
 }
 
@@ -334,15 +334,15 @@ $('reportList').addEventListener('click', async event => {
     const id = event.target.dataset.saveReport;
     if (!id) return;
     const card = event.target.closest('[data-report-id]');
-    const data = {status: card.querySelector('[data-report-status]').value, admin_note: card.querySelector('[data-report-note]').value.trim()};
-    try { await api(`/api/bin-reports/${id}`, {method: 'PATCH', body: JSON.stringify(data)}); message('Đã cập nhật báo cáo.'); load() } catch (error) { message(error.message) }
+    const data = {status: card.querySelector('[data-report-status]').value, admin_note: card.querySelector('[data-report-note]').value.trim(), award_points: card.querySelector('[data-award-report]').checked};
+    try { const result = await api(`/api/bin-reports/${id}`, {method: 'PATCH', body: JSON.stringify(data)}); message(result.points_awarded ? 'Đã cập nhật báo cáo và cộng 3 điểm.' : 'Đã cập nhật báo cáo.'); load() } catch (error) { message(error.message) }
 });
 $('closeQr').addEventListener('click', () => $('qrDialog').close());
 $('printQr').addEventListener('click', () => {
     const image = $('qrCode').querySelector('img')?.src || $('qrCode').querySelector('canvas')?.toDataURL();
     if (!image || !activeQrLocation) return;
     const popup = window.open('', '_blank', 'width=500,height=650');
-    popup.document.write(`<title>QR ${escapeHtml(activeQrLocation.ten_vi_tri)}</title><div style="font-family:Arial;text-align:center;padding:30px"><h2>${escapeHtml(activeQrLocation.ten_vi_tri)}</h2><img src="${image}" width="300"><p>Quét để báo hư hỏng thùng rác</p></div>`);
+    popup.document.write(`<title>QR ${escapeHtml(activeQrLocation.ten_vi_tri)}</title><div style="font-family:Arial;text-align:center;padding:30px"><h2>${escapeHtml(activeQrLocation.ten_vi_tri)}</h2><img src="${image}" width="300"><p>Quét để xác nhận bỏ rác hoặc báo hư hỏng</p></div>`);
     popup.document.close(); popup.focus(); popup.print()
 });
 $('adminStatsPeriod').addEventListener('change', () => {
