@@ -17,7 +17,7 @@ from detector import GarbageDetector
 from database import get_db, init_app as init_database
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY=os.getenv("SECRET_KEY", "it-challenge-local-secret-change-me"), MODEL_PATH=os.getenv("MODEL_PATH", r"E:\work_space\edu\ITChallenge\vit_garbage_tiny (1).pth"), CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")), BACKEND_API_URL=os.getenv("BACKEND_API_URL", ""), DATABASE_PATH=os.getenv("DATABASE_PATH", os.path.join(app.instance_path, "garbage.db")))
+app.config.update(SECRET_KEY=os.getenv("SECRET_KEY", "it-challenge-local-secret-change-me"), MODEL_PATH=os.getenv("MODEL_PATH", r"E:\\work_space\\edu\\ITChallenge\\vit_garbage_tiny (1).pth"), CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")), BACKEND_API_URL=os.getenv("BACKEND_API_URL", ""), DATABASE_PATH=os.getenv("DATABASE_PATH", os.path.join(app.instance_path, "garbage.db")))
 init_database(app)
 detector = None
 
