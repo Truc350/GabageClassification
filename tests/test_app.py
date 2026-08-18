@@ -102,29 +102,37 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(self.client.get("/api/export/recognitions.csv").status_code, 200)
 
     def test_notifications_quiz_and_report_workflow(self):
-        reward = self.client.post("/api/admin/rewards", json={"name": "Quà thử nghiệm", "description": "Dùng trong kiểm thử", "points_cost": 30, "stock": 2})
+        reward = self.client.post("/api/admin/rewards", json={"name": "Quà thử nghiệm", "description": "Dùng trong kiểm thử", "points_cost": 3, "stock": 2})
         self.assertEqual(reward.status_code, 201)
         reward_id = reward.get_json()["id"]
         payload = {"ten_vi_tri": "Điểm vận hành", "loai_thung_list": ["Xám"], "latitude": 10.87236,
-                   "longitude": 106.78984, "trang_thai": "Đầy", "mo_ta": "",
+                   "longitude": 106.78984, "trang_thai": "Hoạt động", "mo_ta": "",
                    "last_maintenance_at": "2026-08-01", "next_maintenance_at": "2026-08-10"}
         location_id = self.client.post("/api/bin-locations", json=payload).get_json()["id"]
         self.client.post("/logout")
         report = self.client.post("/api/bin-reports", json={"location_id": location_id, "report_type": "Hư hỏng",
-                                  "note": "Nắp bị gãy", "reporter_name": "Người báo", "reporter_contact": "email@example.com"})
+                                  "note": "Nắp bị gãy", "reporter_name": "Người báo", "reporter_contact": "email@example.com", "user_id": 1})
         self.assertEqual(report.status_code, 201)
         quiz = self.client.post("/api/education-quiz", json={"user_id": 1, "score": 4, "total": 4})
         self.assertEqual(quiz.status_code, 201)
-        self.assertEqual(quiz.get_json()["points_awarded"], 40)
+        self.assertEqual(quiz.get_json()["points_awarded"], 5)
         self.assertEqual(self.client.post("/api/education-quiz", json={"user_id": 1, "score": 4, "total": 4}).get_json()["points_awarded"], 0)
         redemption = self.client.post(f"/api/rewards/{reward_id}/redeem", json={"user_id": 1})
         self.assertEqual(redemption.status_code, 201)
-        self.assertEqual(redemption.get_json()["balance"], 10)
+        self.assertEqual(redemption.get_json()["balance"], 2)
+        history = self.client.post("/api/history", json={"user_id": 1, "category_label": "trash", "confidence": 0.95})
+        disposal = self.client.post("/api/disposals/confirm", json={"user_id": 1, "history_id": history.get_json()["id"], "location_id": location_id})
+        self.assertEqual(disposal.status_code, 201)
+        self.assertEqual(disposal.get_json()["points_awarded"], 1)
+        self.assertEqual(self.client.post("/api/disposals/confirm", json={"user_id": 1, "history_id": history.get_json()["id"], "location_id": location_id}).status_code, 409)
         self.client.post("/login", data={"username": "admin", "password": "admin123"})
         report_id = report.get_json()["id"]
         self.assertEqual(self.client.patch(f"/api/bin-reports/{report_id}", json={"status": "Đang xử lý", "admin_note": "Đã giao nhân viên"}).status_code, 200)
         updated = next(item for item in self.client.get("/api/bin-reports").get_json() if item["id"] == report_id)
         self.assertEqual(updated["status"], "Đang xử lý")
+        awarded = self.client.patch(f"/api/bin-reports/{report_id}", json={"status": "Đã xử lý", "admin_note": "Hợp lệ", "award_points": True})
+        self.assertEqual(awarded.get_json()["points_awarded"], 3)
+        self.assertEqual(self.client.patch(f"/api/bin-reports/{report_id}", json={"status": "Đã xử lý", "award_points": True}).get_json()["points_awarded"], 0)
         self.assertGreaterEqual(self.client.get("/api/notifications").get_json()["total"], 1)
         self.assertEqual(self.client.get("/api/export/reports.csv").status_code, 200)
         rewards = self.client.get("/api/admin/rewards").get_json()

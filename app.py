@@ -403,6 +403,8 @@ def api_disposal_confirm():
         WHERE h.id=? AND h.user_id=?""", (history_id, user_id)).fetchone()
     location = database.execute("SELECT * FROM bin_locations WHERE id=?", (location_id,)).fetchone()
     if not history or not location: return jsonify(error="Không tìm thấy lượt nhận diện hoặc thùng rác"), 404
+    if location["trang_thai"] != "Hoạt động":
+        return jsonify(error=f"Điểm thu gom đang ở trạng thái {location['trang_thai']}, chưa thể xác nhận bỏ rác"), 409
     try:
         recognized_at = datetime.fromisoformat(history["thoi_gian"].replace("Z", "+00:00"))
         if recognized_at.tzinfo is None: recognized_at = recognized_at.replace(tzinfo=timezone.utc)

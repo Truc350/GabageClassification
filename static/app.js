@@ -176,6 +176,19 @@ function openReportDialog(location, reportType = '') {
     $('reportNote').focus()
 }
 
+function openStationDialog(location) {
+    if (!location) return;
+    const pending = JSON.parse(localStorage.getItem('pendingDisposal') || 'null');
+    const validPending = pending && pending.expiresAt > Date.now();
+    $('stationDialog').dataset.locationId = location.id;
+    $('stationLocationName').textContent = location.ten_vi_tri;
+    $('stationRecognitionStatus').textContent = validPending
+        ? `Rác vừa nhận diện: ${LABELS[pending.label] || pending.label}. Xác nhận sau khi đã bỏ đúng thùng.`
+        : 'Bạn chưa có lượt nhận diện hợp lệ trong 10 phút gần đây.';
+    $('confirmDisposal').disabled = !validPending;
+    $('stationDialog').showModal()
+}
+
 function renderBinMarkers() {
     if (!campusMap) return;
     binMarkers.forEach(marker => marker.remove());
@@ -204,13 +217,15 @@ async function loadBinMap() {
         renderBinMarkers();
         const query = new URLSearchParams(location.search);
         const reportLocationId = Number(query.get('report'));
-        const requestedId = reportLocationId || Number(query.get('bin'));
+        const stationLocationId = Number(query.get('station'));
+        const requestedId = reportLocationId || stationLocationId || Number(query.get('bin'));
         const requested = requestedId && binLocations.find(item => item.id === requestedId);
         if (requested) {
             activateSection('campus-map-section');
             campusMap.setView([requested.latitude, requested.longitude], 18);
             binMarkers.find(marker => marker.locationId === requestedId)?.openPopup();
             if (reportLocationId) openReportDialog(requested, 'Hư hỏng');
+            else if (stationLocationId) openStationDialog(requested);
             else $('campusMap').scrollIntoView({behavior: 'smooth', block: 'center'})
         }
     } catch (error) {
@@ -356,7 +371,8 @@ async function save(r) {
     };
     speakGuidance(r.label);
     try {
-        await getJson('/bridge/history', {method: 'POST', body: JSON.stringify(data)});
+        const saved = await getJson('/bridge/history', {method: 'POST', body: JSON.stringify(data)});
+        if (saved.id) localStorage.setItem('pendingDisposal', JSON.stringify({historyId: saved.id, label: r.label, expiresAt: Date.now() + 10 * 60 * 1000}));
         notice('Đã lưu kết quả nhận diện.');
         loadHistory()
     } catch (e) {
@@ -518,6 +534,7 @@ $('reportForm').addEventListener('submit', async event => {
         data.append('note', $('reportNote').value.trim());
         data.append('reporter_name', $('reporterName').value.trim());
         data.append('reporter_contact', $('reporterContact').value.trim());
+        data.append('user_id', userId);
         if ($('reportImage').files[0]) data.append('image', $('reportImage').files[0]);
         const response = await fetch('/api/bin-reports', {method: 'POST', body: data});
         const result = await response.json().catch(() => ({}));
@@ -525,6 +542,23 @@ $('reportForm').addEventListener('submit', async event => {
         $('reportDialog').close();
         $('reportForm').reset();
         notice('Đã gửi báo cáo đến quản trị viên.')
+    } catch (error) { notice(error.message) }
+});
+$('closeStationDialog').addEventListener('click', () => $('stationDialog').close());
+$('stationReportDamage').addEventListener('click', () => {
+    const location = binLocations.find(item => item.id === Number($('stationDialog').dataset.locationId));
+    $('stationDialog').close();
+    openReportDialog(location, 'Hư hỏng')
+});
+$('confirmDisposal').addEventListener('click', async () => {
+    const pending = JSON.parse(localStorage.getItem('pendingDisposal') || 'null');
+    if (!pending) return notice('Vui lòng nhận diện rác trước khi xác nhận.');
+    try {
+        const result = await getJson('/api/disposals/confirm', {method: 'POST', body: JSON.stringify({user_id: userId, history_id: pending.historyId, location_id: Number($('stationDialog').dataset.locationId)})});
+        localStorage.removeItem('pendingDisposal');
+        $('stationDialog').close();
+        notice(`+1 điểm xanh · Đã bỏ ${result.waste_name} đúng thùng tại ${result.location_name}.`);
+        loadRewards()
     } catch (error) { notice(error.message) }
 });
 $('educationQuizForm').addEventListener('submit', async event => {
