@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS bin_reports (
     admin_note TEXT NOT NULL DEFAULT '',
     assigned_to INTEGER,
     reporter_user_id INTEGER,
+    ai_analysis TEXT NOT NULL DEFAULT '',
+    ai_priority TEXT NOT NULL DEFAULT '',
+    ai_analyzed_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resolved_at TEXT,
     FOREIGN KEY (location_id) REFERENCES bin_locations(id) ON DELETE CASCADE,
@@ -87,6 +90,16 @@ CREATE TABLE IF NOT EXISTS education_quiz_results (
     total INTEGER NOT NULL,
     points_awarded INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS quiz_question_stats (
+    user_id INTEGER NOT NULL,
+    question_key TEXT NOT NULL,
+    correct_count INTEGER NOT NULL DEFAULT 0,
+    wrong_count INTEGER NOT NULL DEFAULT 0,
+    last_answered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, question_key),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
