@@ -63,14 +63,18 @@ function shuffled(items) {
     return [...items].sort(() => Math.random() - .5)
 }
 
-function renderQuiz() {
-    const questions = shuffled(QUIZ_BANK).slice(0, 4);
-    activeQuizAnswers = {};
-    $('quizQuestions').innerHTML = questions.map((item, index) => {
-        const name = `q${index + 1}`;
-        activeQuizAnswers[name] = item.answer;
-        return `<fieldset><legend>${index + 1}. ${escapeMapText(item.question)}</legend>${shuffled(item.options).map(([value, label], optionIndex) => `<label><input type="radio" name="${name}" value="${escapeMapText(value)}"${optionIndex === 0 ? ' required' : ''}> ${escapeMapText(label)}</label>`).join('')}</fieldset>`
-    }).join('')
+async function renderQuiz() {
+    try {
+        const questions = await getJson(`/api/education/questions?user_id=${userId}`);
+        activeQuizAnswers = {};
+        $('quizQuestions').innerHTML = questions.map((item, index) => {
+            const name = `q${index + 1}`;
+            activeQuizAnswers[name] = item.key;
+            return `<fieldset><legend>${index + 1}. ${escapeMapText(item.question)}</legend>${item.options.map(([value, label], optionIndex) => `<label><input type="radio" name="${name}" value="${escapeMapText(value)}"${optionIndex === 0 ? ' required' : ''}> ${escapeMapText(label)}</label>`).join('')}</fieldset>`
+        }).join('')
+    } catch (error) {
+        $('quizQuestions').innerHTML = `<p class="empty">Không tải được câu hỏi: ${escapeMapText(error.message)}</p>`
+    }
 }
 
 async function loadRewards() {
@@ -563,22 +567,21 @@ $('confirmDisposal').addEventListener('click', async () => {
 });
 $('educationQuizForm').addEventListener('submit', async event => {
     event.preventDefault();
-    const answers = new FormData(event.currentTarget);
-    const correct = activeQuizAnswers;
-    const score = Object.entries(correct).filter(([question, answer]) => answers.get(question) === answer).length;
-    event.currentTarget.querySelectorAll('label').forEach(label => label.classList.remove('answer-correct', 'answer-wrong'));
-    Object.entries(correct).forEach(([question, correctAnswer]) => {
-        const inputs = [...event.currentTarget.querySelectorAll(`input[name="${question}"]`)];
-        inputs.find(input => input.value === correctAnswer)?.closest('label')?.classList.add('answer-correct');
-        const selected = inputs.find(input => input.checked);
-        if (selected && selected.value !== correctAnswer) selected.closest('label').classList.add('answer-wrong')
-    });
-    const total = Object.keys(correct).length;
-    $('quizScore').textContent = score === total ? `${score}/${total} · Chuyên gia xanh` : `${score}/${total} câu đúng`;
-    $('quizScore').classList.toggle('perfect', score === total);
-    event.currentTarget.classList.add('quiz-graded');
+    const formAnswers = new FormData(event.currentTarget), submitted = {};
+    Object.entries(activeQuizAnswers).forEach(([name, key]) => submitted[key] = formAnswers.get(name));
     try {
-        const result = await getJson('/api/education-quiz', {method: 'POST', body: JSON.stringify({user_id: userId, score, total})});
+        const result = await getJson('/api/education-quiz', {method: 'POST', body: JSON.stringify({user_id: userId, answers: submitted})});
+        event.currentTarget.querySelectorAll('label').forEach(label => label.classList.remove('answer-correct', 'answer-wrong'));
+        Object.entries(activeQuizAnswers).forEach(([name, key]) => {
+            const correctAnswer = result.correct_answers[key];
+            const inputs = [...event.currentTarget.querySelectorAll(`input[name="${name}"]`)];
+            inputs.find(input => input.value === correctAnswer)?.closest('label')?.classList.add('answer-correct');
+            const selected = inputs.find(input => input.checked);
+            if (selected && selected.value !== correctAnswer) selected.closest('label').classList.add('answer-wrong')
+        });
+        $('quizScore').textContent = result.score === result.total ? `${result.score}/${result.total} · Chuyên gia xanh` : `${result.score}/${result.total} câu đúng`;
+        $('quizScore').classList.toggle('perfect', result.score === result.total);
+        event.currentTarget.classList.add('quiz-graded');
         $('quizScore').textContent += result.points_awarded ? ` · +${result.points_awarded} điểm` : ' · Hôm nay đã nhận điểm';
         loadRewards()
     }
@@ -591,6 +594,20 @@ $('rewardList').addEventListener('click', async event => {
         const result = await getJson(`/api/rewards/${rewardId}/redeem`, {method: 'POST', body: JSON.stringify({user_id: userId})});
         notice(`Đổi quà thành công. Mã nhận quà: ${result.code}`); loadRewards()
     } catch (error) { notice(error.message) }
+});
+$('assistantForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const question = $('assistantQuestion').value.trim();
+    if (!question) return;
+    $('assistantMessages').insertAdjacentHTML('beforeend', `<div class="assistant-message user">${escapeMapText(question)}</div>`);
+    $('assistantQuestion').value = '';
+    try {
+        const result = await getJson('/api/assistant', {method: 'POST', body: JSON.stringify({question})});
+        $('assistantMessages').insertAdjacentHTML('beforeend', `<div class="assistant-message bot">${escapeMapText(result.answer)}<small>Nguồn: ${escapeMapText(result.source)}</small></div>`)
+    } catch (error) {
+        $('assistantMessages').insertAdjacentHTML('beforeend', `<div class="assistant-message bot error">${escapeMapText(error.message)}</div>`)
+    }
+    $('assistantMessages').scrollTop = $('assistantMessages').scrollHeight
 });
 $('educationQuizForm').addEventListener('change', event => {
     if (!event.currentTarget.classList.contains('quiz-graded')) return;

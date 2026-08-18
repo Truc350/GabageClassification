@@ -7,13 +7,15 @@ import os
 import sqlite3
 import json
 import uuid
+import random
+import unicodedata
 from functools import wraps
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template, request, session, redirect, url_for, send_from_directory, make_response
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from PIL import Image
+from PIL import Image, ImageFilter, ImageStat
 
 from api_client import BackendApiClient, BackendApiError
 from detector import GarbageDetector
@@ -23,6 +25,21 @@ app = Flask(__name__)
 app.config.update(SECRET_KEY=os.getenv("SECRET_KEY", "it-challenge-local-secret-change-me"), MODEL_PATH=os.getenv("MODEL_PATH", r"E:\\work_space\\edu\\ITChallenge\\vit_garbage_tiny (1).pth"), CONFIDENCE_THRESHOLD=float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")), BACKEND_API_URL=os.getenv("BACKEND_API_URL", ""), DATABASE_PATH=os.getenv("DATABASE_PATH", os.path.join(app.instance_path, "garbage.db")), REPORT_UPLOAD_FOLDER=os.getenv("REPORT_UPLOAD_FOLDER", os.path.join(app.instance_path, "report_uploads")), MAX_CONTENT_LENGTH=8 * 1024 * 1024)
 init_database(app)
 detector = None
+
+QUIZ_BANK = [
+    {"key": "organic_bin", "question": "Thức ăn thừa nên bỏ vào đâu?", "options": [["green", "Thùng xanh lá"], ["blue", "Thùng xanh dương"], ["gray", "Thùng xám"]], "answer": "green"},
+    {"key": "battery", "question": "Pin đã qua sử dụng nên xử lý thế nào?", "options": [["gray", "Bỏ chung vào thùng xám"], ["hazard", "Mang đến điểm thu gom pin hoặc chất thải nguy hại"]], "answer": "hazard"},
+    {"key": "clean_plastic", "question": "Chai nhựa nên chuẩn bị thế nào trước khi thu gom?", "options": [["clean", "Làm sạch sơ bộ và để ráo"], ["full", "Giữ nguyên chất lỏng bên trong"]], "answer": "clean"},
+    {"key": "reduce", "question": "Cách phù hợp để giảm rác từ đầu là gì?", "options": [["reuse", "Ưu tiên đồ dùng có thể sử dụng nhiều lần"], ["single", "Dùng thêm đồ dùng một lần"]], "answer": "reuse"},
+    {"key": "paper_bin", "question": "Giấy và bìa carton thuộc nhóm thùng nào trong hệ thống?", "options": [["green", "Xanh lá"], ["blue", "Xanh dương"], ["gray", "Xám"]], "answer": "blue"},
+    {"key": "drain_organic", "question": "Rác hữu cơ quá ướt nên làm gì trước khi bỏ?", "options": [["drain", "Để ráo nước"], ["mix", "Trộn với giấy sạch"]], "answer": "drain"},
+    {"key": "clothes", "question": "Quần áo còn sử dụng được nên ưu tiên cách nào?", "options": [["share", "Chia sẻ hoặc tái sử dụng"], ["trash", "Bỏ ngay vào rác còn lại"]], "answer": "share"},
+    {"key": "damage", "question": "Khi thấy thùng bị hư hỏng, bạn nên làm gì?", "options": [["report", "Quét QR và gửi báo cáo"], ["ignore", "Bỏ qua sự cố"]], "answer": "report"},
+    {"key": "glass", "question": "Thủy tinh trong hệ thống được thu gom theo nhóm nào?", "options": [["blue", "Xanh dương"], ["green", "Xanh lá"], ["gray", "Xám"]], "answer": "blue"},
+    {"key": "battery_safety", "question": "Có nên làm móp hoặc chọc thủng pin trước khi thu gom không?", "options": [["no", "Không"], ["yes", "Có"]], "answer": "no"},
+    {"key": "metal", "question": "Kim loại được hướng dẫn đến thùng nào?", "options": [["blue", "Xanh dương"], ["green", "Xanh lá"], ["gray", "Xám"]], "answer": "blue"},
+    {"key": "find_bin", "question": "Nếu chưa chắc vị trí thùng phù hợp, nên làm gì?", "options": [["map", "Dùng bản đồ tìm điểm thu gom"], ["ground", "Để rác cạnh đường"]], "answer": "map"},
+]
 
 
 def get_detector():
@@ -436,6 +453,72 @@ def api_bin_report_image(report_id):
     return send_from_directory(app.config["REPORT_UPLOAD_FOLDER"], row["image_path"])
 
 
+@app.post("/api/bin-reports/<int:report_id>/analyze")
+@admin_required
+def api_bin_report_analyze(report_id):
+    database = get_db()
+    report = database.execute("SELECT * FROM bin_reports WHERE id=?", (report_id,)).fetchone()
+    if not report or not report["image_path"]: return jsonify(error="Báo cáo chưa có ảnh để phân tích"), 400
+    try:
+        image = Image.open(os.path.join(app.config["REPORT_UPLOAD_FOLDER"], report["image_path"])).convert("RGB")
+        sample = image.copy(); sample.thumbnail((512, 512))
+        brightness = sum(ImageStat.Stat(sample.convert("L")).mean)
+        edge_variance = sum(ImageStat.Stat(sample.convert("L").filter(ImageFilter.FIND_EDGES)).var)
+        quality = "Ảnh đủ sáng"
+        if brightness < 55: quality = "Ảnh khá tối, nên kiểm tra thủ công"
+        elif edge_variance < 180: quality = "Ảnh có thể bị mờ, nên kiểm tra thủ công"
+        model_note = "Mô hình không xác định rõ vật thể"
+        try:
+            prediction = get_detector().predict(image)
+            label = prediction.get("label") if prediction.get("accepted") else prediction.get("raw_label")
+            if label:
+                category = database.execute("SELECT ten_loai FROM waste_categories WHERE category_label=?", (label,)).fetchone()
+                model_note = f"Mô hình nhận thấy nội dung gần với {category['ten_loai'] if category else label} ({prediction.get('confidence', 0)*100:.1f}%)"
+        except Exception as exc:
+            app.logger.warning("Report image model analysis unavailable: %s", exc)
+            model_note = "Mô hình phân loại chưa sẵn sàng; chỉ kiểm tra được chất lượng ảnh"
+        priority = "Cao" if report["report_type"] in ("Hư hỏng", "Đầy") else "Trung bình"
+        analysis = f"{quality}. {model_note}. Đây là gợi ý AI, quản trị viên cần xác nhận hiện trạng."
+        database.execute("UPDATE bin_reports SET ai_analysis=?, ai_priority=?, ai_analyzed_at=CURRENT_TIMESTAMP WHERE id=?", (analysis, priority, report_id))
+        audit("Phân tích AI", "Báo cáo sự cố", report_id, priority); database.commit()
+        return jsonify(analysis=analysis, priority=priority)
+    except (OSError, ValueError):
+        return jsonify(error="Không đọc được ảnh báo cáo"), 400
+
+
+def normalize_text(value):
+    normalized = unicodedata.normalize("NFD", str(value).lower())
+    return "".join(character for character in normalized if unicodedata.category(character) != "Mn")
+
+
+@app.post("/api/assistant")
+def api_assistant():
+    question = str((request.get_json(silent=True) or {}).get("question", "")).strip()
+    if not question: return jsonify(error="Vui lòng nhập câu hỏi"), 400
+    normalized = normalize_text(question)
+    rows = [dict(row) for row in get_db().execute("SELECT * FROM waste_categories ORDER BY id").fetchall()]
+    aliases = {
+        "battery": ["pin", "ac quy"], "biological": ["thuc an", "do an", "rau", "rac huu co"],
+        "cardboard": ["carton", "thung giay"], "clothes": ["quan ao", "vai"], "metal": ["kim loai", "lon nuoc"],
+        "paper": ["giay"], "plastic": ["nhua", "chai nhua", "tui nilon"], "shoes": ["giay dep", "dep"],
+        "trash": ["rac khac"], "brown-glass": ["thuy tinh"], "green-glass": ["thuy tinh"], "white-glass": ["thuy tinh"]
+    }
+    candidates = []
+    for row in rows:
+        for term in {normalize_text(row["ten_loai"]), *aliases.get(row["category_label"], [])}:
+            if term and term in normalized: candidates.append((len(term), row))
+    matched = max(candidates, key=lambda item: item[0])[1] if candidates else None
+    if matched:
+        if matched["category_label"] == "battery":
+            answer = "Pin không bỏ chung với rác sinh hoạt. Hãy giữ pin khô ráo và mang đến điểm thu gom pin hoặc chất thải nguy hại."
+        else:
+            answer = f"{matched['ten_loai']} được hướng dẫn bỏ vào thùng {matched['mau_thung']}. {matched['mo_ta']}"
+        return jsonify(answer=answer, category_label=matched["category_label"], source="Danh mục rác trong hệ thống")
+    if any(term in normalized for term in ("gan nhat", "o dau", "vi tri", "ban do")):
+        return jsonify(answer="Bạn hãy mở tab Maps của trường và chọn Tìm thùng gần nhất. Hệ thống sẽ lọc theo màu thùng phù hợp.", source="Chức năng bản đồ của hệ thống")
+    return jsonify(answer="Mình chưa tìm thấy loại rác này trong danh mục hiện tại. Bạn có thể mô tả vật liệu cụ thể hơn, ví dụ: nhựa, giấy, kim loại, thủy tinh, thức ăn thừa hoặc pin.", source="Danh mục rác trong hệ thống")
+
+
 @app.route("/api/history", methods=["GET", "POST"])
 def api_history():
     database = get_db()
@@ -609,13 +692,43 @@ def api_audit_logs():
     return jsonify([dict(row) for row in rows])
 
 
+@app.get("/api/education/questions")
+def api_education_questions():
+    try: user_id = int(request.args.get("user_id", 1))
+    except ValueError: return jsonify(error="user_id không hợp lệ"), 400
+    stats = {row["question_key"]: dict(row) for row in get_db().execute("SELECT * FROM quiz_question_stats WHERE user_id=?", (user_id,)).fetchall()}
+    ranked = sorted(QUIZ_BANK, key=lambda item: (
+        (stats.get(item["key"], {}).get("wrong_count", 0) - stats.get(item["key"], {}).get("correct_count", 0))
+        + (2 if item["key"] not in stats else 0) + random.random()
+    ), reverse=True)[:4]
+    result = [{"key": item["key"], "question": item["question"], "options": random.sample(item["options"], len(item["options"]))} for item in ranked]
+    return jsonify(result)
+
+
 @app.post("/api/education-quiz")
 def api_education_quiz():
     data = request.get_json(silent=True) or {}
-    try: score, total, user_id = int(data["score"]), int(data["total"]), int(data.get("user_id", 1))
-    except (KeyError, TypeError, ValueError): return jsonify(error="Kết quả không hợp lệ"), 400
-    if total <= 0 or score < 0 or score > total: return jsonify(error="Kết quả không hợp lệ"), 400
+    try: user_id = int(data.get("user_id", 1))
+    except (TypeError, ValueError): return jsonify(error="Kết quả không hợp lệ"), 400
+    submitted = data.get("answers")
     database = get_db()
+    if isinstance(submitted, dict):
+        definitions = {item["key"]: item for item in QUIZ_BANK}
+        valid = {key: answer for key, answer in submitted.items() if key in definitions}
+        if not valid: return jsonify(error="Không có câu trả lời hợp lệ"), 400
+        score, total = sum(answer == definitions[key]["answer"] for key, answer in valid.items()), len(valid)
+        for key, answer in valid.items():
+            correct = int(answer == definitions[key]["answer"])
+            database.execute("""INSERT INTO quiz_question_stats
+                (user_id, question_key, correct_count, wrong_count) VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id, question_key) DO UPDATE SET
+                correct_count=correct_count+excluded.correct_count,
+                wrong_count=wrong_count+excluded.wrong_count, last_answered_at=CURRENT_TIMESTAMP""",
+                (user_id, key, correct, 1-correct))
+    else:
+        try: score, total = int(data["score"]), int(data["total"])
+        except (KeyError, TypeError, ValueError): return jsonify(error="Kết quả không hợp lệ"), 400
+    if total <= 0 or score < 0 or score > total: return jsonify(error="Kết quả không hợp lệ"), 400
     award = 5
     source_key = f"quiz:{user_id}:{datetime.now(timezone.utc).date().isoformat()}"
     try:
@@ -626,7 +739,9 @@ def api_education_quiz():
     cursor = database.execute("INSERT INTO education_quiz_results (user_id, score, total, points_awarded) VALUES (?, ?, ?, ?)", (user_id, score, total, award))
     database.commit()
     balance = database.execute("SELECT COALESCE(SUM(points),0) AS value FROM point_transactions WHERE user_id=?", (user_id,)).fetchone()["value"]
-    return jsonify(id=cursor.lastrowid, success=True, points_awarded=award, balance=balance), 201
+    correct_answers = {key: definitions[key]["answer"] for key in valid} if isinstance(submitted, dict) else {}
+    return jsonify(id=cursor.lastrowid, success=True, score=score, total=total,
+        correct_answers=correct_answers, points_awarded=award, balance=balance), 201
 
 
 @app.get("/api/rewards")

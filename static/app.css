@@ -406,6 +406,17 @@ button {
 .bin-blue .education-icon { color: #3b82f6; }
 .bin-gray .education-icon { color: #64748b; }
 .hazardous-card { border-color: #ead8aa; background: #fffaf0; }
+.eco-assistant { margin-top: 18px; padding: 28px; }
+.eco-assistant h2 { margin: 3px 0; }
+.assistant-status { color: var(--muted); font-size: 12px; }
+.assistant-messages { display: flex; max-height: 300px; flex-direction: column; gap: 10px; overflow: auto; margin: 18px 0; padding: 16px; border-radius: 14px; background: #f2f7f4; }
+.assistant-message { max-width: 82%; padding: 11px 13px; border-radius: 13px; }
+.assistant-message.bot { align-self: flex-start; background: #fff; border: 1px solid var(--line); }
+.assistant-message.user { align-self: flex-end; background: var(--green); color: #fff; }
+.assistant-message small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.assistant-message.error { color: #a4382d; }
+.assistant-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.assistant-form input { min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; font: inherit; }
 .education-quiz { margin-top: 18px; padding: 28px; background: linear-gradient(145deg, #fff, #f4faf7); }
 .education-quiz h2 { margin: 3px 0 14px; }
 .education-quiz #quizScore { padding: 7px 12px; border-radius: 999px; background: #edf3f0; color: var(--muted); font-size: 13px; }
@@ -766,4 +777,5 @@ th {
     .education-quiz { padding: 20px; }
     .quiz-questions, .reward-grid { grid-template-columns: 1fr; }
     .redemption-list > div { flex-direction: column; }
+    .assistant-form { grid-template-columns: 1fr; }
 }

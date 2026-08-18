@@ -167,7 +167,7 @@ const formatTime = value => value ? new Date(`${value.replace(' ', 'T')}Z`).toLo
 function renderReports() {
     const fresh = reports.filter(item => item.status === 'Mới').length;
     $('newReportCount').textContent = `${fresh} báo cáo mới`;
-    $('reportList').innerHTML = reports.length ? reports.map(item => `<article class="report-card report-${item.status === 'Đã xử lý' ? 'done' : 'new'}" data-report-id="${item.id}"><div class="report-card-head"><div><strong>${escapeHtml(item.report_type)} · ${escapeHtml(item.ten_vi_tri)}</strong><span>${escapeHtml(item.reporter_name || 'Ẩn danh')}${item.reporter_contact ? ` · ${escapeHtml(item.reporter_contact)}` : ''} · ${formatTime(item.created_at)}</span></div>${item.image_path ? `<a href="/api/bin-reports/${item.id}/image" target="_blank">Xem ảnh</a>` : ''}</div><p>${escapeHtml(item.note || 'Không có mô tả')}</p><div class="report-workflow"><label>Trạng thái<select data-report-status><option${item.status === 'Mới' ? ' selected' : ''}>Mới</option><option${item.status === 'Đang xử lý' ? ' selected' : ''}>Đang xử lý</option><option${item.status === 'Đã xử lý' ? ' selected' : ''}>Đã xử lý</option></select></label><label>Ghi chú xử lý<input data-report-note value="${escapeHtml(item.admin_note || '')}" placeholder="Nội dung đã xử lý"></label><label class="award-report-points"><input type="checkbox" data-award-report> Báo cáo hợp lệ · +3 điểm</label><button class="primary" data-save-report="${item.id}">Lưu</button></div><small>Phụ trách: ${escapeHtml(item.assigned_username || 'Chưa phân công')}</small></article>`).join('') : '<p class="empty">Chưa có báo cáo từ người dùng.</p>'
+    $('reportList').innerHTML = reports.length ? reports.map(item => `<article class="report-card report-${item.status === 'Đã xử lý' ? 'done' : 'new'}" data-report-id="${item.id}"><div class="report-card-head"><div><strong>${escapeHtml(item.report_type)} · ${escapeHtml(item.ten_vi_tri)}</strong><span>${escapeHtml(item.reporter_name || 'Ẩn danh')}${item.reporter_contact ? ` · ${escapeHtml(item.reporter_contact)}` : ''} · ${formatTime(item.created_at)}</span></div><div class="report-image-actions">${item.image_path ? `<a href="/api/bin-reports/${item.id}/image" target="_blank">Xem ảnh</a><button class="secondary" data-analyze-report="${item.id}">Phân tích AI</button>` : ''}</div></div><p>${escapeHtml(item.note || 'Không có mô tả')}</p>${item.ai_analysis ? `<div class="ai-analysis"><strong>Gợi ý AI · Ưu tiên ${escapeHtml(item.ai_priority)}</strong><p>${escapeHtml(item.ai_analysis)}</p></div>` : ''}<div class="report-workflow"><label>Trạng thái<select data-report-status><option${item.status === 'Mới' ? ' selected' : ''}>Mới</option><option${item.status === 'Đang xử lý' ? ' selected' : ''}>Đang xử lý</option><option${item.status === 'Đã xử lý' ? ' selected' : ''}>Đã xử lý</option></select></label><label>Ghi chú xử lý<input data-report-note value="${escapeHtml(item.admin_note || '')}" placeholder="Nội dung đã xử lý"></label><label class="award-report-points"><input type="checkbox" data-award-report> Báo cáo hợp lệ · +3 điểm</label><button class="primary" data-save-report="${item.id}">Lưu</button></div><small>Phụ trách: ${escapeHtml(item.assigned_username || 'Chưa phân công')}</small></article>`).join('') : '<p class="empty">Chưa có báo cáo từ người dùng.</p>'
 }
 
 function showQr(item) {
@@ -331,6 +331,13 @@ $('locationForm').addEventListener('submit', async event => {
     } catch (error) { message(error.message) }
 });
 $('reportList').addEventListener('click', async event => {
+    const analyzeId = event.target.dataset.analyzeReport;
+    if (analyzeId) {
+        event.target.disabled = true; event.target.textContent = 'Đang phân tích...';
+        try { await api(`/api/bin-reports/${analyzeId}/analyze`, {method: 'POST'}); message('Đã tạo gợi ý AI cho ảnh báo cáo.'); load() }
+        catch (error) { message(error.message); event.target.disabled = false; event.target.textContent = 'Phân tích AI' }
+        return
+    }
     const id = event.target.dataset.saveReport;
     if (!id) return;
     const card = event.target.closest('[data-report-id]');

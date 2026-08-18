@@ -74,6 +74,11 @@
 .report-card-head strong, .report-card-head span { display: block; }
 .report-card-head span, .report-card small { color: var(--muted); font-size: 13px; }
 .report-card-head a { color: var(--green); font-weight: 700; }
+.report-image-actions { display: flex; align-items: center; gap: 8px; }
+.report-image-actions button { padding: 7px 10px; }
+.ai-analysis { margin: 12px 0; padding: 12px 14px; border: 1px solid #b9ddcb; border-radius: 10px; background: #eff9f4; }
+.ai-analysis strong { color: var(--green); }
+.ai-analysis p { margin: 5px 0 0; color: var(--muted); }
 .report-workflow { display: grid; grid-template-columns: 160px 1fr auto auto; align-items: end; gap: 12px; margin: 12px 0; }
 .report-workflow label { color: var(--muted); font-size: 12px; font-weight: 700; }
 .report-workflow select, .report-workflow input { width: 100%; margin-top: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }

@@ -81,6 +81,9 @@ def init_db():
         "admin_note": "TEXT NOT NULL DEFAULT ''",
         "assigned_to": "INTEGER",
         "reporter_user_id": "INTEGER",
+        "ai_analysis": "TEXT NOT NULL DEFAULT ''",
+        "ai_priority": "TEXT NOT NULL DEFAULT ''",
+        "ai_analyzed_at": "TEXT",
     }.items():
         if column not in report_columns:
             database.execute(f"ALTER TABLE bin_reports ADD COLUMN {column} {definition}")
@@ -97,15 +100,18 @@ def init_db():
                 status TEXT NOT NULL DEFAULT 'Mới' CHECK (status IN ('Mới', 'Đang xử lý', 'Đã xử lý')),
                 reporter_name TEXT NOT NULL DEFAULT '', reporter_contact TEXT NOT NULL DEFAULT '',
                 image_path TEXT, admin_note TEXT NOT NULL DEFAULT '', assigned_to INTEGER, reporter_user_id INTEGER,
+                ai_analysis TEXT NOT NULL DEFAULT '', ai_priority TEXT NOT NULL DEFAULT '', ai_analyzed_at TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, resolved_at TEXT,
                 FOREIGN KEY (location_id) REFERENCES bin_locations(id) ON DELETE CASCADE,
                 FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
                 FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
             );
             INSERT INTO bin_reports (id, location_id, report_type, note, status, reporter_name,
-                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id, created_at, resolved_at)
+                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id,
+                ai_analysis, ai_priority, ai_analyzed_at, created_at, resolved_at)
             SELECT id, location_id, report_type, note, status, reporter_name,
-                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id, created_at, resolved_at
+                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id,
+                ai_analysis, ai_priority, ai_analyzed_at, created_at, resolved_at
             FROM bin_reports_legacy;
             DROP TABLE bin_reports_legacy;
             CREATE INDEX IF NOT EXISTS idx_bin_reports_status ON bin_reports(status, created_at DESC);

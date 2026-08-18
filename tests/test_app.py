@@ -1,6 +1,9 @@
 import os
+import io
 import tempfile
 import unittest
+from unittest.mock import patch
+from PIL import Image
 
 
 class ApiTestCase(unittest.TestCase):
@@ -9,7 +12,7 @@ class ApiTestCase(unittest.TestCase):
         cls.tempdir = tempfile.TemporaryDirectory()
         os.environ["DATABASE_PATH"] = os.path.join(cls.tempdir.name, "test.db")
         from app import app
-        app.config.update(TESTING=True)
+        app.config.update(TESTING=True, REPORT_UPLOAD_FOLDER=os.path.join(cls.tempdir.name, "uploads"))
         cls.client = app.test_client()
 
     @classmethod
@@ -110,8 +113,12 @@ class ApiTestCase(unittest.TestCase):
                    "last_maintenance_at": "2026-08-01", "next_maintenance_at": "2026-08-10"}
         location_id = self.client.post("/api/bin-locations", json=payload).get_json()["id"]
         self.client.post("/logout")
-        report = self.client.post("/api/bin-reports", json={"location_id": location_id, "report_type": "Hư hỏng",
-                                  "note": "Nắp bị gãy", "reporter_name": "Người báo", "reporter_contact": "email@example.com", "user_id": 1})
+        image_buffer = io.BytesIO()
+        Image.new("RGB", (64, 64), "white").save(image_buffer, format="PNG")
+        image_buffer.seek(0)
+        report = self.client.post("/api/bin-reports", data={"location_id": str(location_id), "report_type": "Hư hỏng",
+                                  "note": "Nắp bị gãy", "reporter_name": "Người báo", "reporter_contact": "email@example.com",
+                                  "user_id": "1", "image": (image_buffer, "damage.png")}, content_type="multipart/form-data")
         self.assertEqual(report.status_code, 201)
         quiz = self.client.post("/api/education-quiz", json={"user_id": 1, "score": 4, "total": 4})
         self.assertEqual(quiz.status_code, 201)
@@ -127,6 +134,11 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(self.client.post("/api/disposals/confirm", json={"user_id": 1, "history_id": history.get_json()["id"], "location_id": location_id}).status_code, 409)
         self.client.post("/login", data={"username": "admin", "password": "admin123"})
         report_id = report.get_json()["id"]
+        with patch("app.get_detector") as mocked_detector:
+            mocked_detector.return_value.predict.return_value = {"accepted": True, "label": "plastic", "confidence": 0.91}
+            analysis = self.client.post(f"/api/bin-reports/{report_id}/analyze")
+            self.assertEqual(analysis.status_code, 200)
+            self.assertIn("gợi ý AI", analysis.get_json()["analysis"])
         self.assertEqual(self.client.patch(f"/api/bin-reports/{report_id}", json={"status": "Đang xử lý", "admin_note": "Đã giao nhân viên"}).status_code, 200)
         updated = next(item for item in self.client.get("/api/bin-reports").get_json() if item["id"] == report_id)
         self.assertEqual(updated["status"], "Đang xử lý")
@@ -138,6 +150,22 @@ class ApiTestCase(unittest.TestCase):
         rewards = self.client.get("/api/admin/rewards").get_json()
         redemption_id = rewards["redemptions"][0]["id"]
         self.assertEqual(self.client.patch(f"/api/admin/redemptions/{redemption_id}", json={"status": "Đã nhận"}).status_code, 200)
+
+    def test_adaptive_quiz_and_grounded_assistant(self):
+        questions = self.client.get("/api/education/questions?user_id=2").get_json()
+        self.assertEqual(len(questions), 4)
+        self.assertTrue(all("answer" not in item for item in questions))
+        known_answers = {"organic_bin": "green", "battery": "hazard", "clean_plastic": "clean", "reduce": "reuse",
+                         "paper_bin": "blue", "drain_organic": "drain", "clothes": "share", "damage": "report",
+                         "glass": "blue", "battery_safety": "no", "metal": "blue", "find_bin": "map"}
+        answers = {item["key"]: known_answers[item["key"]] for item in questions}
+        result = self.client.post("/api/education-quiz", json={"user_id": 2, "answers": answers})
+        self.assertEqual(result.status_code, 201)
+        self.assertEqual(result.get_json()["score"], 4)
+        assistant = self.client.post("/api/assistant", json={"question": "Chai nhựa bỏ thùng nào?"})
+        self.assertEqual(assistant.status_code, 200)
+        self.assertIn("Xanh dương", assistant.get_json()["answer"])
+        self.assertEqual(assistant.get_json()["source"], "Danh mục rác trong hệ thống")
 
 
 if __name__ == "__main__":
