@@ -5,23 +5,39 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Phân loại rác thông minh</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body data-user-id="{{ default_user_id }}">
+<body class="user-app" data-user-id="{{ default_user_id }}">
+<button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Mở menu" aria-expanded="false">☰</button>
+<div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+<aside id="appSidebar" class="app-sidebar">
+    <a class="sidebar-brand" href="#recognition"><span>♻</span><div><strong>WasteWise</strong><small>T&T</small></div></a>
+    <nav aria-label="Điều hướng chính">
+        <a class="sidebar-link active" href="#recognition" data-section="recognition"><span>⌾</span><div><strong>Nhận diện rác thải</strong><small>Quét và phân loại</small></div></a>
+        <a class="sidebar-link" href="#campus-map-section" data-section="campus-map-section"><span>⌖</span><div><strong>Maps của trường</strong><small>Điểm thu gom</small></div></a>
+        <a class="sidebar-link" href="#statistics" data-section="statistics"><span>▥</span><div><strong>Thống kê</strong><small>Lịch sử và biểu đồ</small></div></a>
+    </nav>
+    <a class="sidebar-admin" href="/admin">Quản trị hệ thống →</a>
+</aside>
+<div class="app-content">
 <header class="site-header">
-    <div><span class="eyebrow">IT CHALLENGE</span>
+    <div><span class="eyebrow">T&T</span>
         <h1>Phân loại rác thông minh</h1></div>
     <div class="status"><i id="statusDot"></i><span id="systemStatus">Đang khởi động</span></div>
 </header>
 <main>
-    <section class="detect-grid">
+    <section id="recognition" class="detect-grid app-section active">
         <article class="camera-card panel">
             <div class="camera-frame">
                 <video id="camera" autoplay playsinline muted></video>
                 <canvas id="captureCanvas" hidden></canvas>
                 <div class="scan-box"><span></span><span></span><span></span><span></span></div>
                 <div id="cameraMessage" class="camera-message">Nhấn “Bật camera” để bắt đầu</div>
+                <div class="camera-tip">Đặt một vật vào giữa khung vuông</div>
             </div>
             <div class="actions">
                 <button id="toggleCamera" class="primary">Bật camera</button>
@@ -31,6 +47,8 @@
         <aside class="result-column">
             <article class="panel result-card"><span class="eyebrow">KẾT QUẢ NHẬN DIỆN</span>
                 <h2 id="resultName">Chưa có kết quả</h2>
+                <div class="confidence-row"><span>Độ tin cậy</span><strong id="resultConfidence">—</strong></div>
+                <div class="confidence-track"><i id="confidenceBar"></i></div>
             </article>
             <article class="panel bin-guide">
                 <div id="binSwatch" class="bin-icon">♻</div>
@@ -39,7 +57,17 @@
             </article>
             <p id="notice" class="notice" aria-live="polite"></p></aside>
     </section>
-    <section class="dashboard-grid">
+    <section id="campus-map-section" class="panel campus-map-panel app-section">
+        <div class="section-title">
+            <div><span class="eyebrow">ĐẠI HỌC NÔNG LÂM TP.HCM</span><h2>Bản đồ thùng rác trong khuôn viên</h2></div>
+            <span id="mapLocationCount" class="map-count">0 vị trí</span>
+        </div>
+        <div class="map-tools"><div class="map-legend"><button class="map-filter active" data-bin-filter="all"><i class="all"></i>Tất cả</button><button class="map-filter" data-bin-filter="Xanh lá"><i class="green"></i>Xanh lá</button><button class="map-filter" data-bin-filter="Xanh dương"><i class="blue"></i>Xanh dương</button><button class="map-filter" data-bin-filter="Xám"><i class="gray"></i>Xám</button></div><label>Trạng thái<select id="mapStatusFilter"><option value="all">Tất cả</option><option>Hoạt động</option><option>Đầy</option><option>Bảo trì</option></select></label><button id="findNearest" class="secondary" type="button">Tìm thùng gần nhất</button></div>
+        <div id="campusMap" class="campus-map" aria-label="Bản đồ vị trí thùng rác"></div>
+        <div id="nearestResult" class="nearest-result" hidden></div>
+        <p id="mapEmpty" class="map-empty">Chưa có vị trí thùng rác. Quản trị viên có thể bố trí thùng trên trang quản trị.</p>
+    </section>
+    <section id="statistics" class="dashboard-grid app-section">
         <article class="panel history-panel">
             <div class="section-title">
                 <div><span class="eyebrow">CÁ NHÂN</span>
@@ -88,5 +116,7 @@
         </article>
     </section>
 </main>
+</div>
+<dialog id="reportDialog"><form id="reportForm"><input id="reportLocationId" type="hidden"><h2>Báo sự cố thùng rác</h2><p id="reportLocationName"></p><label>Vấn đề<select id="reportType"><option>Đầy</option><option>Hư hỏng</option><option>Sai vị trí</option></select></label><label>Ghi chú<textarea id="reportNote" rows="3" placeholder="Mô tả thêm nếu cần"></textarea></label><div class="dialog-actions"><button id="cancelReport" class="secondary" type="button">Hủy</button><button class="primary">Gửi báo cáo</button></div></form></dialog>
 </body>
 </html>

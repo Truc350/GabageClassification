@@ -20,7 +20,7 @@ Tai ca thu muc tao boi `model.save_pretrained()` va
 Sau do chay:
 
 ```powershell
-$env:MODEL_PATH="models/vit_garbage_model"
+$env:MODEL_PATH="vit_garbage_model"
 .\.venv\Scripts\python.exe app.py
 ```
 

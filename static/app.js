@@ -40,6 +40,9 @@ const state = {
     charts: []
 }, $ = id => document.getElementById(id), userId = Number(document.body.dataset.userId || 1);
 let vietnameseVoice = null;
+const CAMPUS_CENTER = [10.87236, 106.78984];
+const BIN_COLORS = {'Xanh lá': '#22c55e', 'Xanh dương': '#3b82f6', 'Xám': '#64748b'};
+let campusMap = null, binMarkers = [], binLocations = [], selectedBinFilter = 'all', lastAcceptedLabel = null;
 
 function loadVietnameseVoice() {
     if (!('speechSynthesis' in window)) return;
@@ -111,6 +114,99 @@ async function loadCategories() {
     }
 }
 
+function markerIcon(binType) {
+    const color = BIN_COLORS[binType] || '#64748b';
+    return L.divIcon({className: '', html: `<i class="bin-map-marker" style="width:22px;height:22px;background:${color}"></i>`, iconSize: [22, 22], iconAnchor: [11, 11]})
+}
+
+const locationBins = item => item.loai_thung_list?.length ? item.loai_thung_list : [item.loai_thung];
+const normalizedBin = value => ({'xanh lá': 'Xanh lá', 'xanh dương': 'Xanh dương', 'xám': 'Xám'}[String(value || '').toLowerCase()] || value);
+
+function popupContent(item) {
+    const bins = locationBins(item).map(escapeMapText).join(', ');
+    const updated = item.updated_at ? new Date(`${item.updated_at.replace(' ', 'T')}Z`).toLocaleString('vi-VN') : 'Chưa có';
+    const directions = `https://www.google.com/maps/dir/?api=1&destination=${item.latitude},${item.longitude}`;
+    return `<strong>${escapeMapText(item.ten_vi_tri)}</strong><br>${bins} · ${escapeMapText(item.trang_thai)}${item.mo_ta ? `<br>${escapeMapText(item.mo_ta)}` : ''}<br><small>Cập nhật: ${updated}</small><div class="popup-actions"><a href="${directions}" target="_blank" rel="noopener">Chỉ đường</a><button type="button" data-report-location="${item.id}">Báo sự cố</button></div>`
+}
+
+function renderBinMarkers() {
+    if (!campusMap) return;
+    binMarkers.forEach(marker => marker.remove());
+    const status = $('mapStatusFilter').value;
+    const visible = binLocations.filter(item => (selectedBinFilter === 'all' || locationBins(item).includes(selectedBinFilter)) && (status === 'all' || item.trang_thai === status));
+    binMarkers = visible.map(item => {
+        const marker = L.marker([item.latitude, item.longitude], {icon: markerIcon(locationBins(item)[0])}).bindPopup(popupContent(item)).addTo(campusMap);
+        marker.locationId = item.id;
+        return marker
+    });
+    $('mapLocationCount').textContent = `${visible.length}/${binLocations.length} vị trí`;
+    $('mapEmpty').hidden = visible.length > 0;
+}
+
+async function loadBinMap() {
+    if (typeof L === 'undefined') return;
+    if (!campusMap) {
+        campusMap = L.map('campusMap').setView(CAMPUS_CENTER, 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(campusMap)
+    }
+    try {
+        binLocations = await getJson('/api/bin-locations');
+        renderBinMarkers();
+        const requestedId = Number(new URLSearchParams(location.search).get('bin'));
+        const requested = requestedId && binLocations.find(item => item.id === requestedId);
+        if (requested) {
+            activateSection('campus-map-section');
+            campusMap.setView([requested.latitude, requested.longitude], 18);
+            binMarkers.find(marker => marker.locationId === requestedId)?.openPopup();
+            $('campusMap').scrollIntoView({behavior: 'smooth', block: 'center'})
+        }
+    } catch (error) {
+        $('mapEmpty').hidden = false;
+        $('mapEmpty').textContent = `Không tải được bản đồ thùng rác: ${error.message}`
+    }
+}
+
+function distanceKm(a, b) {
+    const rad = value => value * Math.PI / 180, earth = 6371;
+    const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+    const value = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+    return earth * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value))
+}
+
+function findNearest(binType = selectedBinFilter) {
+    if (!navigator.geolocation) return notice('Thiết bị không hỗ trợ định vị.');
+    navigator.geolocation.getCurrentPosition(position => {
+        const origin = [position.coords.latitude, position.coords.longitude];
+        const candidates = binLocations.filter(item => item.trang_thai === 'Hoạt động' && (binType === 'all' || locationBins(item).includes(binType)));
+        if (!candidates.length) return notice('Chưa có thùng đang hoạt động phù hợp.');
+        const nearest = candidates.map(item => ({item, distance: distanceKm(origin, [item.latitude, item.longitude])})).sort((a, b) => a.distance - b.distance)[0];
+        const directions = `https://www.google.com/maps/dir/?api=1&origin=${origin[0]},${origin[1]}&destination=${nearest.item.latitude},${nearest.item.longitude}`;
+        $('nearestResult').hidden = false;
+        $('nearestResult').innerHTML = `Gần nhất: <strong>${escapeMapText(nearest.item.ten_vi_tri)}</strong> · ${nearest.distance < 1 ? Math.round(nearest.distance * 1000) + ' m' : nearest.distance.toFixed(1) + ' km'}<a href="${directions}" target="_blank" rel="noopener">Chỉ đường</a>`;
+        campusMap.setView([nearest.item.latitude, nearest.item.longitude], 18)
+    }, error => notice(`Không lấy được vị trí: ${error.message}`), {enableHighAccuracy: true, timeout: 10000})
+}
+
+function suggestNearestForLabel(label) {
+    const binType = normalizedBin(state.categories[label]?.bin);
+    if (!BIN_COLORS[binType] || label === lastAcceptedLabel) return;
+    lastAcceptedLabel = label;
+    selectedBinFilter = binType;
+    document.querySelectorAll('[data-bin-filter]').forEach(button => button.classList.toggle('active', button.dataset.binFilter === binType));
+    renderBinMarkers();
+    $('nearestResult').hidden = false;
+    $('nearestResult').textContent = `Đã lọc các điểm có thùng ${binType.toLocaleLowerCase('vi-VN')}. Bấm “Tìm thùng gần nhất” để sử dụng vị trí của bạn.`
+}
+
+function escapeMapText(value) {
+    const node = document.createElement('span');
+    node.textContent = value ?? '';
+    return node.innerHTML
+}
+
 async function toggleCamera() {
     if (state.stream) {
         stopCamera();
@@ -119,11 +215,14 @@ async function toggleCamera() {
     try {
         state.stream = await navigator.mediaDevices.getUserMedia({
             video: {
-                facingMode: 'environment',
+                facingMode: 'user',
                 width: {ideal: 1280}
             }, audio: false
         });
         $('camera').srcObject = state.stream;
+        const activeTrack = state.stream.getVideoTracks()[0];
+        const facingMode = activeTrack?.getSettings?.().facingMode;
+        $('camera').classList.toggle('mirrored', facingMode !== 'environment');
         $('cameraMessage').hidden = true;
         $('toggleCamera').textContent = 'Tắt camera';
         $('statusDot').classList.add('online');
@@ -165,14 +264,24 @@ async function capture() {
 }
 
 function show(r) {
-    $('resultName').textContent = LABELS[r.label] || r.label;
+    const displayLabel = r.accepted ? r.label : (r.raw_label || 'unknown');
+    $('resultName').textContent = r.accepted
+        ? (LABELS[displayLabel] || displayLabel)
+        : `Có thể là ${LABELS[displayLabel] || displayLabel}`;
+    $('resultConfidence').textContent = pct(r.confidence);
+    $('confidenceBar').style.width = `${Math.max(0, Math.min(100, Number(r.confidence) * 100))}%`;
+    $('confidenceBar').style.background = r.accepted ? '#16835b' : '#e0a528';
     if (r.accepted) {
         const g = state.categories[r.label] || {};
         $('binSwatch').style.background = g.color || '#e5f4ec';
         $('binText').textContent = r.label === 'battery'
             ? 'Đưa đến điểm thu gom pin/chất thải nguy hại'
             : `Bỏ vào thùng màu ${g.bin || 'phù hợp'}`
-    } else $('binText').textContent = 'Hãy đưa vật lại gần và giữ ổn định'
+        if (r.label !== 'battery') suggestNearestForLabel(r.label)
+    } else {
+        $('binSwatch').style.background = '#e7eee9';
+        $('binText').textContent = 'Chưa đủ tin cậy — đưa một vật lại gần, vào giữa khung và giữ ổn định'
+    }
 }
 
 function stabilize(r) {
@@ -302,6 +411,67 @@ $('historyNext').addEventListener('click', () => {
     state.historyPage++;
     renderHistory()
 });
+document.querySelectorAll('[data-bin-filter]').forEach(button => button.addEventListener('click', () => {
+    selectedBinFilter = button.dataset.binFilter;
+    document.querySelectorAll('[data-bin-filter]').forEach(item => item.classList.toggle('active', item === button));
+    renderBinMarkers()
+}));
+$('mapStatusFilter').addEventListener('change', renderBinMarkers);
+$('findNearest').addEventListener('click', () => findNearest());
+$('campusMap').addEventListener('click', event => {
+    const button = event.target.closest('[data-report-location]');
+    if (!button) return;
+    const location = binLocations.find(item => item.id === Number(button.dataset.reportLocation));
+    if (!location) return;
+    $('reportLocationId').value = location.id;
+    $('reportLocationName').textContent = location.ten_vi_tri;
+    $('reportDialog').showModal()
+});
+$('cancelReport').addEventListener('click', () => $('reportDialog').close());
+$('reportForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+        await getJson('/api/bin-reports', {method: 'POST', body: JSON.stringify({location_id: Number($('reportLocationId').value), report_type: $('reportType').value, note: $('reportNote').value.trim()})});
+        $('reportDialog').close();
+        $('reportNote').value = '';
+        notice('Đã gửi báo cáo đến quản trị viên.')
+    } catch (error) { notice(error.message) }
+});
+function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+    $('sidebarToggle').setAttribute('aria-expanded', 'false')
+}
+
+const VALID_SECTIONS = new Set(['recognition', 'campus-map-section', 'statistics']);
+
+function activateSection(sectionId, updateHistory = true) {
+    const targetId = VALID_SECTIONS.has(sectionId) ? sectionId : 'recognition';
+    document.querySelectorAll('.app-section').forEach(section => section.classList.toggle('active', section.id === targetId));
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        const active = link.dataset.section === targetId;
+        link.classList.toggle('active', active);
+        link.setAttribute('aria-current', active ? 'page' : 'false')
+    });
+    if (updateHistory && location.hash !== `#${targetId}`) history.pushState(null, '', `#${targetId}`);
+    if (targetId === 'campus-map-section') setTimeout(() => campusMap?.invalidateSize(), 50);
+    if (targetId === 'statistics') setTimeout(() => state.charts.forEach(chart => chart.resize()), 50);
+    closeSidebar()
+}
+
+$('sidebarToggle').addEventListener('click', () => {
+    const open = document.body.classList.toggle('sidebar-open');
+    $('sidebarToggle').setAttribute('aria-expanded', String(open))
+});
+$('sidebarBackdrop').addEventListener('click', closeSidebar);
+document.querySelectorAll('.sidebar-link').forEach(link => link.addEventListener('click', event => {
+    event.preventDefault();
+    activateSection(link.dataset.section)
+}));
+document.querySelector('.sidebar-brand').addEventListener('click', event => {
+    event.preventDefault();
+    activateSection('recognition')
+});
+window.addEventListener('popstate', () => activateSection(location.hash.slice(1), false));
 window.addEventListener('beforeunload', stopCamera);
 if ('speechSynthesis' in window) {
     loadVietnameseVoice();
@@ -309,3 +479,5 @@ if ('speechSynthesis' in window) {
 }
 loadCategories();
 loadHistory();
+loadBinMap();
+activateSection(location.hash.slice(1), false);

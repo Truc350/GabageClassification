@@ -1,12 +1,149 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quản trị phân loại rác</title><link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}"><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script><script src="{{ url_for('static', filename='admin.js') }}" defer></script></head><body>
-<header class="site-header"><div><span class="eyebrow">QUẢN TRỊ HỆ THỐNG</span><h1>Dashboard phân loại rác</h1></div><a class="back-link" href="/">← Trang nhận diện</a></header><main>
-<section class="stat-grid"><article class="panel stat"><span>Tổng lượt nhận diện</span><strong id="totalRecognitions">0</strong></article><article class="panel stat"><span>Người dùng hoạt động</span><strong id="activeUsers">0</strong></article><article class="panel stat"><span>Số danh mục</span><strong id="categoryCount">0</strong></article></section>
-<section class="bin-summary"><div class="section-title"><div><span class="eyebrow">THU GOM</span><h2>Phân loại theo 3 thùng rác</h2></div></div><div class="bin-grid">
-<article class="panel bin-card green"><span>Thùng xanh lá</span><strong id="greenBinCount">0 lượt</strong><p>Thu gom rác hữu cơ và chất thải thực phẩm.</p></article>
-<article class="panel bin-card blue"><span>Thùng xanh dương</span><strong id="blueBinCount">0 lượt</strong><p>Thu gom giấy, nhựa, kim loại, thủy tinh, carton, quần áo và giày dép để tái sử dụng hoặc tái chế.</p></article>
-<article class="panel bin-card gray"><span>Thùng xám</span><strong id="grayBinCount">0 lượt</strong><p>Thu gom rác sinh hoạt còn lại. Pin phải mang đến điểm thu gom pin hoặc chất thải nguy hại.</p></article>
-</div></section>
-<section class="admin-chart-grid"><article class="panel chart-panel"><h2>Tỷ lệ loại rác</h2><div class="chart-box"><canvas id="systemPie"></canvas></div></article><article class="panel chart-panel"><h2>Số lượt theo ngày</h2><div class="chart-box"><canvas id="systemBar"></canvas></div></article></section>
-<section class="panel category-manager"><div class="section-title"><div><span class="eyebrow">CẤU HÌNH</span><h2>Quản lý danh mục rác</h2></div><button id="newCategory" class="primary">Thêm danh mục</button></div><p id="adminNotice" class="notice"></p><div class="table-wrap"><table><thead><tr><th>Nhãn model</th><th>Loại rác</th><th>Màu nhận diện</th><th>Thùng thu gom</th><th>Mô tả</th><th></th></tr></thead><tbody id="categoryBody"></tbody></table></div></section>
-<dialog id="categoryDialog"><form id="categoryForm"><input id="categoryId" type="hidden"><h2 id="dialogTitle">Thêm danh mục</h2><label>Nhãn model<input id="categoryLabel" required placeholder="plastic"></label><label>Tên hiển thị<input id="categoryName" required placeholder="Nhựa"></label><div class="form-row"><label>Màu thùng<input id="binColor" required placeholder="Vàng"></label><label>Màu giao diện<input id="colorHex" type="color" value="#16835b"></label></div><label>Mô tả<textarea id="description" rows="3"></textarea></label><div class="dialog-actions"><button type="button" id="cancelDialog" class="secondary">Hủy</button><button class="primary">Lưu</button></div></form></dialog>
-</main></body></html>
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Quản trị phân loại rác</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
+    <script src="{{ url_for('static', filename='admin.js') }}" defer></script>
+</head>
+<body>
+<header class="site-header">
+    <div><span class="eyebrow">QUẢN TRỊ HỆ THỐNG</span>
+        <h1>Dashboard phân loại rác</h1></div>
+    <div class="header-actions"><a class="back-link" href="/">← Trang nhận diện</a>
+        <form method="post" action="/logout">
+            <button class="secondary">Đăng xuất</button>
+        </form>
+    </div>
+</header>
+<main>
+    <section class="stat-grid">
+        <article class="panel stat"><span>Tổng lượt nhận diện</span><strong id="totalRecognitions">0</strong></article>
+        <article class="panel stat"><span>Người dùng hoạt động</span><strong id="activeUsers">0</strong></article>
+        <article class="panel stat"><span>Số danh mục</span><strong id="categoryCount">0</strong></article>
+    </section>
+    <section class="bin-summary">
+        <div class="section-title">
+            <div><span class="eyebrow">THU GOM</span>
+                <h2>Phân loại theo 3 thùng rác</h2></div>
+        </div>
+        <div class="bin-grid">
+            <article class="panel bin-card green"><span>Thùng xanh lá</span><strong id="greenBinCount">0 lượt</strong>
+                <p>Thu gom rác hữu cơ và chất thải thực phẩm.</p></article>
+            <article class="panel bin-card blue"><span>Thùng xanh dương</span><strong id="blueBinCount">0 lượt</strong>
+                <p>Thu gom giấy, nhựa, kim loại, thủy tinh, carton, quần áo và giày dép để tái sử dụng hoặc tái chế.</p>
+            </article>
+            <article class="panel bin-card gray"><span>Thùng xám</span><strong id="grayBinCount">0 lượt</strong>
+                <p>Thu gom rác sinh hoạt còn lại. Pin phải mang đến điểm thu gom pin hoặc chất thải nguy hại.</p>
+            </article>
+        </div>
+    </section>
+    <section class="admin-chart-grid">
+        <article class="panel chart-panel"><h2>Tỷ lệ loại rác</h2>
+            <div class="chart-box">
+                <canvas id="systemPie"></canvas>
+            </div>
+        </article>
+        <article class="panel chart-panel"><h2>Số lượt theo ngày</h2>
+            <div class="chart-box">
+                <canvas id="systemBar"></canvas>
+            </div>
+        </article>
+    </section>
+    <section class="panel location-manager">
+        <div class="section-title">
+            <div><span class="eyebrow">BẢN ĐỒ KHUÔN VIÊN</span>
+                <h2>Bố trí thùng rác</h2></div>
+            <button id="newLocation" class="primary">Thêm vị trí</button>
+        </div>
+        <p class="map-help">Bấm lên bản đồ để chọn tọa độ mới. Kéo marker để điều chỉnh vị trí.</p>
+        <div id="adminCampusMap" class="campus-map"></div>
+        <div id="locationList" class="location-list"></div>
+    </section>
+    <section class="panel report-manager">
+        <div class="section-title">
+            <div><span class="eyebrow">PHẢN ÁNH</span>
+                <h2>Báo cáo từ người dùng</h2></div>
+            <strong id="newReportCount">0 báo cáo mới</strong></div>
+        <div id="reportList" class="location-list"></div>
+    </section>
+    <section class="panel category-manager">
+        <div class="section-title">
+            <div><span class="eyebrow">CẤU HÌNH</span>
+                <h2>Quản lý danh mục rác</h2></div>
+            <button id="newCategory" class="primary">Thêm danh mục</button>
+        </div>
+        <p id="adminNotice" class="notice"></p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Nhãn model</th>
+                    <th>Loại rác</th>
+                    <th>Màu nhận diện</th>
+                    <th>Thùng thu gom</th>
+                    <th>Mô tả</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="categoryBody"></tbody>
+            </table>
+        </div>
+    </section>
+    <dialog id="categoryDialog">
+        <form id="categoryForm"><input id="categoryId" type="hidden">
+            <h2 id="dialogTitle">Thêm danh mục</h2><label>Nhãn model<input id="categoryLabel" required
+                                                                           placeholder="plastic"></label><label>Tên hiển
+                thị<input id="categoryName" required placeholder="Nhựa"></label>
+            <div class="form-row"><label>Màu thùng<input id="binColor" required placeholder="Vàng"></label><label>Màu
+                giao diện<input id="colorHex" type="color" value="#16835b"></label></div>
+            <label>Mô tả<textarea id="description" rows="3"></textarea></label>
+            <div class="dialog-actions">
+                <button type="button" id="cancelDialog" class="secondary">Hủy</button>
+                <button class="primary">Lưu</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="locationDialog">
+        <form id="locationForm"><input id="locationId" type="hidden">
+            <h2 id="locationDialogTitle">Thêm vị trí thùng</h2><label>Tên vị trí<input id="locationName" required
+                                                                                       placeholder="Ví dụ: trước thư viện"></label>
+            <fieldset>
+                <legend>Các thùng tại điểm này</legend>
+                <label><input class="location-bin-check" type="checkbox" value="Xanh lá"> Xanh lá</label><label><input
+                    class="location-bin-check" type="checkbox" value="Xanh dương"> Xanh dương</label><label><input
+                    class="location-bin-check" type="checkbox" value="Xám"> Xám</label></fieldset>
+            <label>Trạng thái<select id="locationStatus" required>
+                <option>Hoạt động</option>
+                <option>Đầy</option>
+                <option>Bảo trì</option>
+            </select></label>
+            <div class="form-row"><label>Vĩ độ<input id="locationLat" type="number" step="any" required></label><label>Kinh
+                độ<input id="locationLng" type="number" step="any" required></label></div>
+            <label>Mô tả<textarea id="locationDescription" rows="3" placeholder="Thông tin nhận biết vị trí"></textarea></label>
+            <p class="coordinate-help">Có thể nhập tọa độ hoặc bấm trực tiếp lên bản đồ.</p>
+            <div class="dialog-actions">
+                <button type="button" id="cancelLocationDialog" class="secondary">Hủy</button>
+                <button class="primary">Lưu vị trí</button>
+            </div>
+        </form>
+    </dialog>
+    <dialog id="qrDialog">
+        <div class="qr-dialog"><h2 id="qrTitle">Mã QR điểm thu gom</h2>
+            <div id="qrCode"></div>
+            <p>In mã này và dán lên thùng để người dùng mở đúng vị trí.</p>
+            <div class="dialog-actions">
+                <button id="printQr" class="primary" type="button">In QR</button>
+                <button id="closeQr" class="secondary" type="button">Đóng</button>
+            </div>
+        </div>
+    </dialog>
+</main>
+</body>
+</html>

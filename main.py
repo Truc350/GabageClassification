@@ -9,7 +9,7 @@ from detector import GarbageDetector
 
 
 detector = GarbageDetector(
-    os.getenv("MODEL_PATH", "vit_garbage_tiny (1).pth"),
+    os.getenv("MODEL_PATH", r"E:\work_space\edu\ITChallenge\vit_garbage_tiny (1).pth"),
     float(os.getenv("CONFIDENCE_THRESHOLD", "0.70")),
 )
 print("DEVICE:", detector.device)
