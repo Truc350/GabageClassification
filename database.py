@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+import json
 
 from flask import current_app, g
 from werkzeug.security import generate_password_hash
@@ -45,6 +46,19 @@ def init_db():
     database = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text(encoding="utf-8")
     database.executescript(schema)
+    location_columns = {row[1] for row in database.execute("PRAGMA table_info(bin_locations)")}
+    if "supported_bins" not in location_columns:
+        database.execute("ALTER TABLE bin_locations ADD COLUMN supported_bins TEXT NOT NULL DEFAULT '[]'")
+    if "updated_at" not in location_columns:
+        database.execute("ALTER TABLE bin_locations ADD COLUMN updated_at TEXT")
+        database.execute("UPDATE bin_locations SET updated_at=COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
+    for row in database.execute("SELECT id, loai_thung, supported_bins FROM bin_locations").fetchall():
+        try:
+            bins = json.loads(row["supported_bins"] or "[]")
+        except (TypeError, ValueError):
+            bins = []
+        if not bins:
+            database.execute("UPDATE bin_locations SET supported_bins=? WHERE id=?", (json.dumps([row["loai_thung"]], ensure_ascii=False), row["id"]))
     database.executemany(
         """INSERT OR IGNORE INTO waste_categories
            (category_label, ten_loai, mau_thung, color_hex, mo_ta)
