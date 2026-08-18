@@ -116,14 +116,14 @@ html { scroll-behavior: smooth; }
 
 * {
     box-sizing: border-box;
-    font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: Arial, sans-serif;
 }
 
 body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.6 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font: 15px/1.6 Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -146,9 +146,10 @@ main {
 }
 
 .eyebrow {
+    font-family: Arial, sans-serif;
     font-size: 11px;
-    font-weight: 800;
-    letter-spacing: .14em;
+    font-weight: 700;
+    letter-spacing: normal;
     color: var(--green);
 }
 
@@ -357,6 +358,83 @@ button {
     padding: 22px;
     margin-top: 22px;
 }
+
+.statistics-filter-panel {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 22px;
+}
+
+.statistics-filter-panel h2 { margin: 2px 0 0; font-size: 20px; }
+.statistics-filter-controls, .custom-period-fields { display: flex; align-items: center; gap: 12px; }
+.statistics-filter-panel label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.statistics-filter-panel select, .statistics-filter-panel input { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; color: var(--ink); }
+
+.education-section { margin: 22px 0 40px; }
+
+.education-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    padding: 30px;
+    background: linear-gradient(135deg, #ffffff, #edf8f2);
+}
+
+.education-hero h2 { margin: 5px 0 8px; font-size: 28px; }
+.education-hero p { max-width: 760px; margin: 0; color: var(--muted); }
+.education-symbol { color: var(--green); font-size: 72px; line-height: 1; }
+
+.education-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+}
+
+.education-card { padding: 24px; }
+.education-card h3 { margin: 7px 0 8px; font-size: 19px; }
+.education-card p { margin: 0 0 12px; color: var(--muted); }
+.education-card strong { color: var(--ink); font-size: 13px; }
+.education-card ol, .education-card ul { margin: 10px 0 0; padding-left: 21px; color: var(--muted); }
+.education-card li + li { margin-top: 7px; }
+.education-icon { font-size: 25px; line-height: 1; }
+.bin-green .education-icon { color: #22c55e; }
+.bin-blue .education-icon { color: #3b82f6; }
+.bin-gray .education-icon { color: #64748b; }
+.hazardous-card { border-color: #ead8aa; background: #fffaf0; }
+.education-quiz { margin-top: 18px; padding: 28px; background: linear-gradient(145deg, #fff, #f4faf7); }
+.education-quiz h2 { margin: 3px 0 14px; }
+.education-quiz #quizScore { padding: 7px 12px; border-radius: 999px; background: #edf3f0; color: var(--muted); font-size: 13px; }
+.education-quiz #quizScore.perfect { background: #dcfce7; color: #167545; }
+.education-quiz form { display: grid; gap: 16px; }
+.quiz-questions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.education-quiz fieldset { display: grid; align-content: start; gap: 9px; margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.education-quiz legend { padding: 0 6px; color: var(--ink); font-weight: 700; }
+.education-quiz fieldset label { display: flex; align-items: center; gap: 10px; margin: 0; padding: 11px 12px; border: 1px solid #e4ebe7; border-radius: 10px; background: #f9fbfa; cursor: pointer; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.education-quiz fieldset label:hover { border-color: #9ccab7; transform: translateY(-1px); }
+.education-quiz fieldset input { flex: 0 0 auto; margin: 0; accent-color: var(--green); }
+.education-quiz form > button { justify-self: center; min-width: 190px; }
+.education-quiz .answer-correct { border-color: #22a866; background: #dcfce7; color: #11643b; box-shadow: inset 4px 0 #22a866; }
+.education-quiz .answer-wrong { border-color: #dc5a4b; background: #fff0ee; color: #a4382d; box-shadow: inset 4px 0 #dc5a4b; }
+.education-quiz .answer-correct::after { content: 'Đúng'; margin-left: auto; color: #168052; font-size: 12px; font-weight: 700; }
+.education-quiz .answer-wrong::after { content: 'Sai'; margin-left: auto; color: #b43d31; font-size: 12px; font-weight: 700; }
+.rewards-panel { margin-top: 18px; padding: 28px; }
+.rewards-panel h2 { margin: 3px 0; }
+.rewards-panel > p { color: var(--muted); }
+#greenPoints { padding: 8px 13px; border-radius: 999px; background: #dcfce7; color: #167545; }
+.reward-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.reward-card { display: grid; gap: 9px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.reward-card h3, .reward-card p { margin: 0; }
+.reward-card p, .reward-card small { color: var(--muted); }
+.reward-card > strong { color: var(--green); font-size: 18px; }
+.redemption-list { margin-top: 20px; }
+.redemption-list > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.redemption-list span { color: var(--muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .campus-map-panel h2 {
     margin: 3px 0 12px;
@@ -638,7 +716,8 @@ th {
     .user-app .site-header { padding-left: 56px; }
 
     .detect-grid,
-    .dashboard-grid {
+    .dashboard-grid,
+    .education-grid {
         grid-template-columns: 1fr;
     }
 
@@ -662,6 +741,10 @@ th {
         flex-direction: column;
     }
 
+    .statistics-filter-panel { align-items: stretch; flex-direction: column; }
+    .statistics-filter-controls, .custom-period-fields { align-items: stretch; flex-direction: column; }
+    .statistics-filter-panel label { align-items: stretch; flex-direction: column; }
+
     .history-tools label {
         align-items: stretch;
         flex-direction: column;
@@ -673,4 +756,10 @@ th {
     }
 
     .campus-map { height: 350px; }
+    .education-hero { align-items: flex-start; padding: 23px; }
+    .education-symbol { font-size: 48px; }
+    .form-row { grid-template-columns: 1fr; }
+    .education-quiz { padding: 20px; }
+    .quiz-questions, .reward-grid { grid-template-columns: 1fr; }
+    .redemption-list > div { flex-direction: column; }
 }

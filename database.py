@@ -46,12 +46,120 @@ def init_db():
     database = get_db()
     schema = Path(current_app.root_path, "schema.sql").read_text(encoding="utf-8")
     database.executescript(schema)
+    user_sql = database.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").fetchone()[0]
+    if "'staff'" not in user_sql:
+        database.execute("PRAGMA foreign_keys = OFF")
+        database.executescript("""
+            CREATE TABLE users_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'staff', 'viewer')),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO users_new (id, username, password_hash, role, created_at)
+            SELECT id, username, password_hash, role, created_at FROM users;
+            DROP TABLE users;
+            ALTER TABLE users_new RENAME TO users;
+        """)
+        database.execute("PRAGMA foreign_keys = ON")
     location_columns = {row[1] for row in database.execute("PRAGMA table_info(bin_locations)")}
     if "supported_bins" not in location_columns:
         database.execute("ALTER TABLE bin_locations ADD COLUMN supported_bins TEXT NOT NULL DEFAULT '[]'")
     if "updated_at" not in location_columns:
         database.execute("ALTER TABLE bin_locations ADD COLUMN updated_at TEXT")
         database.execute("UPDATE bin_locations SET updated_at=COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
+    if "last_maintenance_at" not in location_columns:
+        database.execute("ALTER TABLE bin_locations ADD COLUMN last_maintenance_at TEXT")
+    if "next_maintenance_at" not in location_columns:
+        database.execute("ALTER TABLE bin_locations ADD COLUMN next_maintenance_at TEXT")
+    report_columns = {row[1] for row in database.execute("PRAGMA table_info(bin_reports)")}
+    for column, definition in {
+        "reporter_name": "TEXT NOT NULL DEFAULT ''",
+        "reporter_contact": "TEXT NOT NULL DEFAULT ''",
+        "image_path": "TEXT",
+        "admin_note": "TEXT NOT NULL DEFAULT ''",
+        "assigned_to": "INTEGER",
+        "reporter_user_id": "INTEGER",
+    }.items():
+        if column not in report_columns:
+            database.execute(f"ALTER TABLE bin_reports ADD COLUMN {column} {definition}")
+    report_sql = database.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='bin_reports'").fetchone()[0]
+    if "'Đang xử lý'" not in report_sql:
+        database.execute("PRAGMA foreign_keys = OFF")
+        database.executescript("""
+            ALTER TABLE bin_reports RENAME TO bin_reports_legacy;
+            CREATE TABLE bin_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                location_id INTEGER NOT NULL,
+                report_type TEXT NOT NULL CHECK (report_type IN ('Đầy', 'Hư hỏng', 'Sai vị trí')),
+                note TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Mới' CHECK (status IN ('Mới', 'Đang xử lý', 'Đã xử lý')),
+                reporter_name TEXT NOT NULL DEFAULT '', reporter_contact TEXT NOT NULL DEFAULT '',
+                image_path TEXT, admin_note TEXT NOT NULL DEFAULT '', assigned_to INTEGER, reporter_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, resolved_at TEXT,
+                FOREIGN KEY (location_id) REFERENCES bin_locations(id) ON DELETE CASCADE,
+                FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+            INSERT INTO bin_reports (id, location_id, report_type, note, status, reporter_name,
+                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id, created_at, resolved_at)
+            SELECT id, location_id, report_type, note, status, reporter_name,
+                reporter_contact, image_path, admin_note, assigned_to, reporter_user_id, created_at, resolved_at
+            FROM bin_reports_legacy;
+            DROP TABLE bin_reports_legacy;
+            CREATE INDEX IF NOT EXISTS idx_bin_reports_status ON bin_reports(status, created_at DESC);
+        """)
+        database.execute("PRAGMA foreign_keys = ON")
+    quiz_columns = {row[1] for row in database.execute("PRAGMA table_info(education_quiz_results)")}
+    if "points_awarded" not in quiz_columns:
+        database.execute("ALTER TABLE education_quiz_results ADD COLUMN points_awarded INTEGER NOT NULL DEFAULT 0")
+    broken_user_foreign_keys = {
+        table for table in ("recognition_history", "audit_logs", "education_quiz_results")
+        if any(row[2] == "users_legacy" for row in database.execute(f"PRAGMA foreign_key_list({table})"))
+    }
+    if broken_user_foreign_keys:
+        database.commit()
+        database.execute("PRAGMA foreign_keys = OFF")
+        if "recognition_history" in broken_user_foreign_keys:
+            database.executescript("""
+                CREATE TABLE recognition_history_fixed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL, confidence_score REAL NOT NULL CHECK (confidence_score BETWEEN 0 AND 1),
+                    thoi_gian TEXT NOT NULL, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (category_id) REFERENCES waste_categories(id) ON DELETE RESTRICT
+                );
+                INSERT INTO recognition_history_fixed SELECT * FROM recognition_history;
+                DROP TABLE recognition_history;
+                ALTER TABLE recognition_history_fixed RENAME TO recognition_history;
+                CREATE INDEX idx_history_user_time ON recognition_history(user_id, thoi_gian DESC);
+                CREATE INDEX idx_history_category ON recognition_history(category_id);
+            """)
+        if "audit_logs" in broken_user_foreign_keys:
+            database.executescript("""
+                CREATE TABLE audit_logs_fixed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, username TEXT NOT NULL DEFAULT '',
+                    action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id INTEGER,
+                    details TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                );
+                INSERT INTO audit_logs_fixed SELECT * FROM audit_logs;
+                DROP TABLE audit_logs;
+                ALTER TABLE audit_logs_fixed RENAME TO audit_logs;
+            """)
+        if "education_quiz_results" in broken_user_foreign_keys:
+            database.executescript("""
+                CREATE TABLE education_quiz_results_fixed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL DEFAULT 1,
+                    score INTEGER NOT NULL, total INTEGER NOT NULL, points_awarded INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+                INSERT INTO education_quiz_results_fixed SELECT * FROM education_quiz_results;
+                DROP TABLE education_quiz_results;
+                ALTER TABLE education_quiz_results_fixed RENAME TO education_quiz_results;
+            """)
+        database.execute("PRAGMA foreign_keys = ON")
     for row in database.execute("SELECT id, loai_thung, supported_bins FROM bin_locations").fetchall():
         try:
             bins = json.loads(row["supported_bins"] or "[]")
