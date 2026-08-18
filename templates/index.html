@@ -20,6 +20,7 @@
         <a class="sidebar-link active" href="#recognition" data-section="recognition"><span>⌾</span><div><strong>Nhận diện rác thải</strong><small>Quét và phân loại</small></div></a>
         <a class="sidebar-link" href="#campus-map-section" data-section="campus-map-section"><span>⌖</span><div><strong>Maps của trường</strong><small>Điểm thu gom</small></div></a>
         <a class="sidebar-link" href="#environmental-education" data-section="environmental-education"><span>♧</span><div><strong>Giáo dục môi trường</strong><small>Phân loại và xử lý rác</small></div></a>
+        <a class="sidebar-link" href="#green-rewards" data-section="green-rewards"><span>★</span><div><strong>Điểm xanh & đổi quà</strong><small>Tích điểm và nhận quà</small></div></a>
         <a class="sidebar-link" href="#statistics" data-section="statistics"><span>▥</span><div><strong>Thống kê</strong><small>Lịch sử và biểu đồ</small></div></a>
     </nav>
     <a class="sidebar-admin" href="/admin">Quản trị hệ thống →</a>
@@ -90,7 +91,15 @@
                 <button class="primary" type="submit">Kiểm tra kết quả</button>
             </form>
         </article>
-        <article class="panel rewards-panel"><div class="section-title"><div><span class="eyebrow">ĐIỂM XANH</span><h2>Đổi điểm lấy quà</h2></div><strong id="greenPoints">0 điểm</strong></div><p>Mỗi ngày, lượt kiểm tra đầu tiên được cộng 10 điểm cho mỗi câu đúng. Phần quà do quản trị viên cấu hình.</p><div id="rewardList" class="reward-grid"></div><div id="redemptionList" class="redemption-list"></div></article>
+    </section>
+    <section id="green-rewards" class="green-rewards-section app-section">
+        <article class="panel rewards-hero"><div><span class="eyebrow">CHƯƠNG TRÌNH ĐIỂM XANH</span><h2>Tích điểm từ những hành động có ích</h2><p>Điểm xanh được ghi nhận tự động khi hoạt động đáp ứng đúng điều kiện. Mỗi hành động chỉ được cộng điểm một lần.</p></div><strong id="greenPoints">0 điểm</strong></article>
+        <div class="earning-guide">
+            <article class="panel earning-card"><span class="earning-points">+1</span><div><h3>Bỏ rác đúng thùng</h3><p>Nhận diện rác, quét QR của điểm thu gom trong 10 phút và xác nhận bỏ đúng loại thùng đang hoạt động.</p></div></article>
+            <article class="panel earning-card"><span class="earning-points">+5</span><div><h3>Hoàn thành kiểm tra</h3><p>Hoàn thành bài kiểm tra giáo dục. Chỉ lượt đầu tiên mỗi ngày được cộng điểm.</p></div></article>
+            <article class="panel earning-card"><span class="earning-points">+3</span><div><h3>Báo cáo sự cố hợp lệ</h3><p>Gửi thông tin đúng hiện trạng. Điểm được cộng sau khi quản trị viên xác nhận báo cáo hợp lệ.</p></div></article>
+        </div>
+        <article class="panel rewards-panel"><div class="section-title"><div><span class="eyebrow">PHẦN QUÀ</span><h2>Đổi điểm lấy quà</h2></div></div><p>Phần quà, số điểm và tồn kho do quản trị viên cấu hình.</p><div id="rewardList" class="reward-grid"></div><div id="redemptionList" class="redemption-list"></div></article>
     </section>
     <section id="statistics" class="dashboard-grid app-section">
         <article class="panel statistics-filter-panel">
