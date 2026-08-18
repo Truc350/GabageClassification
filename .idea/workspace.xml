@@ -4,16 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1052b968-2806-4188-ae5c-89b6c3fa86c9" name="Changes" comment="them tinh nang cong diem xanh">
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/database.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/schema.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/admin.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/admin.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/admin.js" beforeDir="false" afterPath="$PROJECT_DIR$/static/admin.js" afterDir="false" />
+    <list default="true" id="1052b968-2806-4188-ae5c-89b6c3fa86c9" name="Changes" comment=" - Bài kiểm tra thích ứng theo câu sai.&#10;  - AI phân tích ảnh báo cáo sự cố.&#10;  - Trợ lý hỏi đáp phân loại dựa trên database">
       <change beforePath="$PROJECT_DIR$/static/app.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/app.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/static/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/static/app.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -148,7 +142,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "#6 on truc",
+    "git-widget-placeholder": "#7 on truc",
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "node.js.detected.package.eslint": "true",
@@ -180,7 +174,7 @@
       <workItem from="1786937552566" duration="3392000" />
       <workItem from="1786956932689" duration="3601000" />
       <workItem from="1787018442861" duration="394000" />
-      <workItem from="1787024718765" duration="3271000" />
+      <workItem from="1787024718765" duration="3767000" />
     </task>
     <task id="LOCAL-00001" summary="init project">
       <option name="closed" value="true" />
@@ -222,7 +216,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787030643296</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary=" - Bài kiểm tra thích ứng theo câu sai.&#10;  - AI phân tích ảnh báo cáo sự cố.&#10;  - Trợ lý hỏi đáp phân loại dựa trên database">
+      <option name="closed" value="true" />
+      <created>1787031601054</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1787031601054</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -233,7 +235,8 @@
     <MESSAGE value="Chỉnh sửa logic phân chia rác" />
     <MESSAGE value="them tinh nang" />
     <MESSAGE value="them tinh nang cong diem xanh" />
-    <option name="LAST_COMMIT_MESSAGE" value="them tinh nang cong diem xanh" />
+    <MESSAGE value=" - Bài kiểm tra thích ứng theo câu sai.&#10;  - AI phân tích ảnh báo cáo sự cố.&#10;  - Trợ lý hỏi đáp phân loại dựa trên database" />
+    <option name="LAST_COMMIT_MESSAGE" value=" - Bài kiểm tra thích ứng theo câu sai.&#10;  - AI phân tích ảnh báo cáo sự cố.&#10;  - Trợ lý hỏi đáp phân loại dựa trên database" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ITChallenge$main.coverage" NAME="main Coverage Results" MODIFIED="1786804643558" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

@@ -621,7 +621,7 @@ function closeSidebar() {
     $('sidebarToggle').setAttribute('aria-expanded', 'false')
 }
 
-const VALID_SECTIONS = new Set(['recognition', 'campus-map-section', 'environmental-education', 'statistics']);
+const VALID_SECTIONS = new Set(['recognition', 'campus-map-section', 'environmental-education', 'green-rewards', 'statistics']);
 
 function activateSection(sectionId, updateHistory = true) {
     const targetId = VALID_SECTIONS.has(sectionId) ? sectionId : 'recognition';
@@ -634,6 +634,7 @@ function activateSection(sectionId, updateHistory = true) {
     if (updateHistory && location.hash !== `#${targetId}`) history.pushState(null, '', `#${targetId}`);
     if (targetId === 'campus-map-section') setTimeout(() => campusMap?.invalidateSize(), 50);
     if (targetId === 'statistics') setTimeout(() => state.charts.forEach(chart => chart.resize()), 50);
+    if (targetId === 'green-rewards') loadRewards();
     closeSidebar()
 }
 

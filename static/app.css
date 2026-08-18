@@ -433,6 +433,16 @@ button {
 .education-quiz .answer-wrong { border-color: #dc5a4b; background: #fff0ee; color: #a4382d; box-shadow: inset 4px 0 #dc5a4b; }
 .education-quiz .answer-correct::after { content: 'Đúng'; margin-left: auto; color: #168052; font-size: 12px; font-weight: 700; }
 .education-quiz .answer-wrong::after { content: 'Sai'; margin-left: auto; color: #b43d31; font-size: 12px; font-weight: 700; }
+.green-rewards-section { margin: 22px 0 40px; }
+.rewards-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 30px; background: linear-gradient(135deg, #fff, #eaf8f1); }
+.rewards-hero h2 { margin: 4px 0 7px; }
+.rewards-hero p { margin: 0; color: var(--muted); }
+.rewards-hero #greenPoints { flex: 0 0 auto; font-size: 22px; }
+.earning-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+.earning-card { display: flex; align-items: flex-start; gap: 15px; padding: 22px; }
+.earning-card h3, .earning-card p { margin: 0; }
+.earning-card p { margin-top: 5px; color: var(--muted); }
+.earning-points { display: grid; min-width: 52px; height: 52px; place-items: center; border-radius: 15px; background: #dcfce7; color: #167545; font-size: 20px; font-weight: 800; }
 .rewards-panel { margin-top: 18px; padding: 28px; }
 .rewards-panel h2 { margin: 3px 0; }
 .rewards-panel > p { color: var(--muted); }
@@ -775,7 +785,8 @@ th {
     .education-symbol { font-size: 48px; }
     .form-row { grid-template-columns: 1fr; }
     .education-quiz { padding: 20px; }
-    .quiz-questions, .reward-grid { grid-template-columns: 1fr; }
+    .quiz-questions, .reward-grid, .earning-guide { grid-template-columns: 1fr; }
     .redemption-list > div { flex-direction: column; }
     .assistant-form { grid-template-columns: 1fr; }
+    .rewards-hero { align-items: flex-start; flex-direction: column; }
 }
